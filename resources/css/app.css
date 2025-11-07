@@ -1,0 +1,92 @@
+nav {
+    background-color: #3ea2c7;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Mendorong item ke sisi kiri dan kanan */
+    padding: 1rem 2rem;
+    height: 50px;
+    color: white; /* Warna teks default untuk item di dalam nav */
+}
+
+/* Penataan untuk logo di dalam navigasi utama */
+nav img {
+    height: 60px; /* Sedikit lebih tinggi dari navbar untuk efek visual */
+    width: auto;
+}
+
+/* Penataan umum untuk div di dalam navigasi */
+/* Ini menargetkan grup logo di kiri dan grup link di kanan */
+nav div {
+    display: flex;
+    align-items: center; /* Membuat semua item sejajar secara vertikal */
+    gap: 2rem; /* Jarak antar item (link) */
+}
+
+/* Penataan untuk link navigasi di sebelah kanan */
+nav div a {
+    text-decoration: none;
+    color: white;
+    font-weight: 500;
+    font-family: sans-serif; /* Menambahkan font agar lebih rapi */
+    transition: color 0.3s ease, transform 0.2s ease; /* Efek transisi halus */
+}
+
+/* Efek saat kursor mouse berada di atas link */
+nav div a:hover {
+    color: #ffdd57; /* Warna berubah menjadi kuning */
+    transform: scale(1.05); /* Sedikit membesar */
+}
+
+/* Kelas untuk membuat teks menjadi tebal */
+.text-bold {
+    font-weight: bold;
+    font-family: sans-serif;
+    line-height: 1.2; /* Mengatur jarak antar baris pada teks "UNIVERSITAS AIRLANGGA" */
+}
+
+/* Garis pemisah vertikal */
+.divider {
+    width: 2px;
+    background-color: white; /* Mengubah warna agar kontras dengan latar biru */
+    height: 40px;
+    opacity: 0.8; /* Sedikit transparan agar tidak terlalu mencolok */
+}
+
+
+/* ------ 2. NAVIGASI KEDUA (KUNING) ------ */
+
+/* Wadah untuk navigasi kuning */
+.nav-kuning {
+    background-color: #ffb726;
+    height: 30px;
+    display: flex; /* Menggunakan flexbox untuk penataan */
+    align-items: center; /* Menyelaraskan item secara vertikal */
+    padding: 0.5rem 2rem; /* Memberi padding */
+}
+
+/* Penataan untuk daftar (ul) di dalam navigasi kuning */
+.nav-kuning ul {
+    margin: 0;
+    padding: 0;
+    list-style: none; /* Menghilangkan bullet points */
+    display: flex;
+    justify-content: flex-end; /* Mendorong link ke kanan */
+    gap: 2rem; /* Jarak antar link */
+    width: 100%; /* Memastikan 'ul' memenuhi lebar '.nav-kuning' */
+}
+
+/* Penataan untuk link di dalam navigasi kuning */
+.nav-kuning ul li a {
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    font-family: sans-serif;
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+/* Efek saat kursor mouse berada di atas link */
+.nav-kuning ul li a:hover {
+    color: #333; /* Warna berubah menjadi abu-abu gelap */
+    transform: scale(1.05); /* Sedikit membesar */
+}
