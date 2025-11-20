@@ -246,12 +246,15 @@
                 margin: 1rem auto;
                 padding: 0.8rem;
             }
+
             .main-container h2 {
                 font-size: 1.5rem;
             }
+
             .data-table {
                 min-width: 400px;
             }
+
             .btn {
                 font-size: 0.85rem;
                 padding: 6px 10px;
@@ -261,79 +264,77 @@
 </head>
 
 <body>
-    <x-layout>
+    <x-navbar />
 
-        <div class="main-container">
-            <h2>Manajemen Kategori</h2>
+    <div class="main-container">
+        <h2>Manajemen Kategori</h2>
 
-            @if (session('success'))
-                <div class="alert alert-success">
-                    {{ session('success') }}
-                </div>
-            @endif
-            @if (session('danger'))
-                <div class="alert alert-danger">
-                    {{ session('danger') }}
-                </div>
-            @endif
+        @if (session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if (session('danger'))
+            <div class="alert alert-danger">
+                {{ session('danger') }}
+            </div>
+        @endif
 
-            {{-- Tombol Tambah --}}
-            <div class="action-header">
+        {{-- Tombol Tambah --}}
+        <div class="action-header">
+            <a href="{{ route('dashboard.admin.kategori.create') }}" class="btn btn-success">
+                <i class="fas fa-plus-circle"></i> Tambah Kategori
+            </a>
+        </div>
+
+        @if ($kategori->isNotEmpty())
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nama Kategori</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        @foreach ($kategori as $kategori)
+                            <tr>
+                                <td>{{ $loop->iteration }}</td>
+                                <td>{{ $kategori->nama_kategori }}</td>
+                                <td class="action-buttons">
+                                    {{-- Tombol Edit --}}
+                                    <a href="{{ route('dashboard.admin.kategori.edit', $kategori->idkategori) }}" class="btn btn-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+
+                                    {{-- Tombol Delete --}}
+                                    <form action="{{ route('dashboard.admin.kategori.destroy', $kategori->idkategori) }}" method="POST">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger"
+                                            onclick="return confirm('Apakah Anda yakin ingin menghapus kategori ini ({{ $kategori->nama_kategori }})?')">
+                                            <i class="fas fa-trash-alt"></i> Hapus
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            {{-- Tampilan jika data kosong --}}
+            <p class="empty-message">Tidak ada data kategori yang tersedia. Silakan tambahkan yang pertama!</p>
+            <div class="empty-state-actions">
                 <a href="{{ route('admin.kategori.create') }}" class="btn btn-success">
-                    <i class="fas fa-plus-circle"></i> Tambah Kategori
+                    <i class="fas fa-plus-circle"></i> Tambah Kategori Pertama
                 </a>
             </div>
+        @endif
 
-            @if ($kategori->isNotEmpty())
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>Nama Kategori</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-
-                            @foreach ($kategori as $kategori)
-                                <tr>
-                                    <td>{{ $loop->iteration }}</td>
-                                    <td>{{ $kategori->nama_kategori }}</td>
-                                    <td class="action-buttons">
-                                        {{-- Tombol Edit --}}
-                                        <a href="{{ route('admin.kategori.edit', $kategori->idkategori) }}"
-                                            class="btn btn-primary">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </a>
-
-                                        {{-- Tombol Delete --}}
-                                        <form action="{{ route('admin.kategori.destroy', $kategori->idkategori) }}" method="POST">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type"submit" class="btn btn-danger"
-                                                onclick="return confirm('Apakah Anda yakin ingin menghapus kategori ini ({{ $kategori->nama_kategori }})?')">
-                                                <i class="fas fa-trash-alt"></i> Hapus
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                {{-- Tampilan jika data kosong --}}
-                <p class="empty-message">Tidak ada data kategori yang tersedia. Silakan tambahkan yang pertama!</p>
-                <div class="empty-state-actions">
-                    <a href="{{ route('admin.kategori.create') }}" class="btn btn-success">
-                        <i class="fas fa-plus-circle"></i> Tambah Kategori Pertama
-                    </a>
-                </div>
-            @endif
-
-        </div>
-    </x-layout>
+    </div>
 </body>
 
 </html>

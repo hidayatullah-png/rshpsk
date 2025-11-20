@@ -269,74 +269,73 @@
 </head>
 
 <body>
-    <x-layout>
+    <x-navbar />
 
-        <div class="main-container">
-            <h2>Manajemen Role</h2>
+    <div class="main-container">
+        <h2>Manajemen Role</h2>
 
-            @if (session('success'))
-                <div class="alert alert-success">
-                    {{ session('success') }}
-                </div>
-            @endif
-            @if (session('danger'))
-                <div class="alert alert-danger">
-                    {{ session('danger') }}
-                </div>
-            @endif
+        @if (session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if (session('danger'))
+            <div class="alert alert-danger">
+                {{ session('danger') }}
+            </div>
+        @endif
 
-            <div class="action-header">
+        <div class="action-header">
+            <a href="{{ route('dashboard.admin.role.create') }}" class="btn btn-success">
+                <i class="fas fa-plus-circle"></i> Tambah Role
+            </a>
+        </div>
+
+        @if ($role->isNotEmpty())
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nama Role</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($role as $role)
+                            <tr>
+                                <td>{{ $loop->iteration }}</td>
+                                <td>{{ $role->nama_role }}</td>
+                                <td class="action-buttons">
+                                    <a href="{{ route('dashboard.admin.role.edit', $role->idrole) }}" class="btn btn-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+
+                                    <form action="{{ route('dashboard.admin.role.destroy', $role->idrole) }}" method="POST">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger"
+                                            onclick="return confirm('Apakah Anda yakin ingin menghapus role \'{{ $role->nama_role }}\'?')">
+                                            <i class="fas fa-trash-alt"></i> Hapus
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <p class="empty-message">Tidak ada data role yang tersedia.</p>
+            <div class="empty-state-actions">
                 <a href="{{ route('admin.role.create') }}" class="btn btn-success">
-                    <i class="fas fa-plus-circle"></i> Tambah Role
+                    <i class="fas fa-plus-circle"></i> Tambah Role Pertama
                 </a>
             </div>
+        @endif
 
-            @if ($role->isNotEmpty())
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>Nama Role</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($role as $role)
-                                <tr>
-                                    <td>{{ $loop->iteration }}</td>
-                                    <td>{{ $role->nama_role }}</td>
-                                    <td class="action-buttons">
-                                        <a href="{{ route('admin.role.edit', $role->idrole) }}"
-                                            class="btn btn-primary">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </a>
-                                        
-                                        <form action="{{ route('admin.role.destroy', $role->idrole) }}" method="POST">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger"
-                                                onclick="return confirm('Apakah Anda yakin ingin menghapus role \'{{ $role->nama_role }}\'?')">
-                                                <i class="fas fa-trash-alt"></i> Hapus
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <p class="empty-message">Tidak ada data role yang tersedia.</p>
-                <div class="empty-state-actions">
-                    <a href="{{ route('admin.role.create') }}" class="btn btn-success">
-                        <i class="fas fa-plus-circle"></i> Tambah Role Pertama
-                    </a>
-                </div>
-            @endif
+    </div>
 
-        </div>
-    </x-layout>
 </body>
 
 </html>

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 use App\Models\Role;
 
@@ -29,17 +28,17 @@ class LoginController extends Controller
     public function login(Request $request)
     {
         // ✅ 1. Validasi input
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'email' => 'required|email',
             'password' => 'required|min:6',
         ]);
 
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
+        // if ($validator->fails()) {
+        // return back()->withErrors($validator)->withInput();
+        // }
 
         // ✅ 2. Ambil user
-        $user = User::with(['roleUser.role'])
+        $user = User::with(['roleUsers.role'])
             ->where('email', $request->input('email'))
             ->first();
 
@@ -53,7 +52,7 @@ class LoginController extends Controller
         }
 
         // ✅ 4. Ambil role aktif dari pivot role_user
-        $activeRoleUser = $user->roleUser->firstWhere('status', 1);
+        $activeRoleUser = $user->roleUsers->firstWhere('status', 1);
 
         if (!$activeRoleUser) {
             return back()->withErrors(['role' => 'Akun Anda tidak memiliki role aktif.'])->withInput();

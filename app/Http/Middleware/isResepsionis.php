@@ -4,37 +4,32 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 
-class isResepsionis
+class IsResepsionis
 {
     /**
-     * Handle an incoming request.
-     *
-     * Middleware ini memastikan hanya user dengan role_id = 4 (Resepsionis)
+     * Middleware memastikan hanya user dengan role_id = 4 (Resepsionis)
      * yang bisa mengakses route tertentu.
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next)
     {
-        // 1️⃣ Cek apakah user sudah login
+        // ✅ 1. Pastikan user sudah login
         if (!Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        // 2️⃣ Ambil role user dari session
-        $userRole = session('user_role');
+        // ✅ 2. Ambil role user dari session (diset saat login)
+        $userRoleId = session('user_role');
 
-        // 3️⃣ Jika role = 4 → izinkan
-        if ($userRole == 4) {
+        // ✅ 3. Jika role cocok → lanjutkan request
+        if ((int) $userRoleId === 4) {
             return $next($request);
         }
 
-        // 4️⃣ Jika bukan resepsionis → tolak akses
-        return back()->with(
-            'error',
-            'Akses ditolak. Anda tidak memiliki izin untuk mengakses halaman ini.'
-        );
+        // ✅ 4. Jika bukan Resepsionis → tolak akses
+        return redirect()->route('dashboard.admin.dashboard-admin')
+            ->with('error', 'Akses ditolak. Halaman ini hanya untuk Resepsionis.');
     }
 }

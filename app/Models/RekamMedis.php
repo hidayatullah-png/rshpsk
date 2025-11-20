@@ -11,11 +11,13 @@ class RekamMedis extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'idreservasi_dokter',
         'idpet',
         'dokter_pemeriksa',
         'anamnesa',
         'temuan_klinis',
         'diagnosa',
+        'terapi',
         'created_at'
     ];
 

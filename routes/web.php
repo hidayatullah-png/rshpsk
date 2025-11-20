@@ -1,120 +1,110 @@
 <?php
-use App\Http\Controllers\Admin\AdminDashboardController;
-use App\Http\Controllers\Dokter\DokterDashboardController;
-use App\Http\Controllers\Perawat\PerawatDashboardController;
-use App\Http\Controllers\Resepsionis\ResepsionisDashboardController;
-use App\Http\Controllers\Site\SiteController;
-use App\Http\Controllers\CekKoneksiController;
-use App\Http\Controllers\Admin\PemilikController;
-use App\Http\Controllers\Admin\JenisHewanController;
-use App\Http\Controllers\Admin\RasHewanController;
-use App\Http\Controllers\Admin\KategoriKlinisController;
-use App\Http\Controllers\Admin\KategoriController;
-use App\Http\Controllers\Admin\KodeTindakanTerapiController;
-use App\Http\Controllers\Admin\PetController;
-use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\Admin\UserRoleController;
+
 use Illuminate\Support\Facades\Route;
 
+// ===== Global Controllers =====
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CekKoneksiController;
+use App\Http\Controllers\Site\SiteController;
+
+// ===== Admin Controllers =====
+use App\Http\Controllers\Admin\{
+    AdminDashboardController,
+    JenisHewanController,
+    RasHewanController,
+    KategoriController,
+    KategoriKlinisController,
+    KodeTindakanTerapiController,
+    RekamMedisController,
+    PetController as AdminPetController,
+    PemilikController as AdminPemilikController,
+    RoleController,
+    UserController,
+    UserRoleController
+};
+
+// ===== Resepsionis Controllers =====
+use App\Http\Controllers\Resepsionis\{
+    ResepsionisDashboardController,
+    PemilikController as ResepsionisPemilikController,
+    PetController as ResepsionisPetController,
+    TemuDokterController as ResepsionisTemuDokterController
+};
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Routes Umum (tanpa login)
+|--------------------------------------------------------------------------
+*/
+Route::get('/', [SiteController::class, 'home'])->name('site.home');
+
+Route::view('/organizations', 'site.organizations')->name('site.organizations');
+Route::view('/visi', 'site.visi')->name('site.visi');
+Route::view('/layanan', 'site.layanan')->name('site.layanan');
+
+// Tes koneksi / debugging
 Route::get('/cek-koneksi', [CekKoneksiController::class, 'index'])->name('cek.koneksi');
 Route::get('/cek-data', [CekKoneksiController::class, 'data'])->name('cek.data');
 
-Route::get('/', [SiteController::class, 'home'])->name('site.home');
-
+// Auth routes
 Auth::routes();
 
-Route::get('/organizations', function () {
-    return view('site.organizations');
-});
+/*
+|--------------------------------------------------------------------------
+| Routes Administrator
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'isAdministrator'])
+    ->prefix('dashboard/admin')
+    ->as('dashboard.admin.')
+    ->group(function () {
 
-Route::get('/visi', function () {
-    return view('site.visi');
-});
+        // Dashboard
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])
+            ->name('dashboard-admin');
 
-Route::get('/layanan', function () {
-    return view('site.layanan');
-});
+        // Master Data
+        Route::resource('jenis-hewan', JenisHewanController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::resource('ras-hewan', RasHewanController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::resource('kategori', KategoriController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::resource('kategori-klinis', KategoriKlinisController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::resource('kode-tindakan-terapi', KodeTindakanTerapiController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 
-// Akses Administrator
-Route::middleware('isAdministrator')->prefix('dashboard/admin')->as('dashboard.admin.')->group(function () {
-    // Dashboard
-    Route::get('/', [AdminDashboardController::class, 'index'])
-        ->name('dashboard-admin');
+        // Data Pemilik & Pet
+        Route::resource('pemilik', AdminPemilikController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::resource('pet', AdminPetController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 
-    // Resource Routes
-    Route::resource('jenis-hewan', JenisHewanController::class)->only([
-        'index',
-        'create',
-        'store',
-        'edit',
-        'update',
-        'destroy'
-    ]);
+        // Role & User
+        Route::resource('role', RoleController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::resource('role-user', UserRoleController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::resource('user', UserController::class)->except(['index', 'show']);
 
-    Route::resource('ras-hewan', RasHewanController::class)->only([
-        'index',
-        'create',
-        'store',
-        'edit',
-        'update',
-        'destroy'
-    ]);
+        // Rekam Medis
+        Route::resource('rekam-medis', RekamMedisController::class)
+            ->parameters(['rekam-medis' => 'rekam_medis'])
+            ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+    });
 
-    Route::resource('kategori', KategoriController::class)->only([
-        'index',
-        'create',
-        'store',
-        'edit',
-        'update',
-        'destroy'
-    ]);
 
-    Route::resource('kategori-klinis', KategoriKlinisController::class)->only([
-        'index',
-        'create',
-        'store',
-        'edit',
-        'update',
-        'destroy'
-    ]);
+/*
+|--------------------------------------------------------------------------
+| Routes Resepsionis
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'isResepsionis'])
+    ->prefix('dashboard/resepsionis')
+    ->as('dashboard.resepsionis.')
+    ->group(function () {
 
-    Route::resource('kode-tindakan-terapi', KodeTindakanTerapiController::class)->only([
-        'index',
-        'create',
-        'store',
-        'edit',
-        'update',
-        'destroy'
-    ]);
+        // Dashboard
+        Route::get('/dashboard', [ResepsionisDashboardController::class, 'index'])->name('dashboard');
 
-    Route::resource('pet', PetController::class)->only([
-        'index',
-        'create',
-        'store',
-        'edit',
-        'update',
-        'destroy'
-    ]);
+        // Registrasi Pemilik & Pet
+        Route::resource('registrasi-pemilik', ResepsionisPemilikController::class)->only(['create', 'store']);
+        Route::resource('registrasi-pet', ResepsionisPetController::class)->only(['create', 'store']);
 
-    Route::resource('role', RoleController::class)->only([
-        'index',
-        'create',
-        'store',
-        'edit',
-        'update',
-        'destroy'
-    ]);
-
-    Route::resource('role-user', UserRoleController::class)->only([
-        'index',
-        'create',
-        'store',
-        'edit',
-        'update',
-        'destroy'
-    ]);
-});
-
-Route::middleware('isResepsionis')->group(function () {
-    Route::get('/resepsionis/dashboard', [ResepsionisDashboardController::class, 'index'])->name('dashboard.resepsionis.dashboard-resepsionis');
-});
+        // Temu Dokter
+        Route::resource('temu-dokter', ResepsionisTemuDokterController::class)->except(['show', 'edit']);
+    });

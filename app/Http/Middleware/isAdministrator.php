@@ -4,38 +4,34 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response;
 
-class isAdministrator
+class IsAdministrator
 {
-    /**
-     * Handle an incoming request.
-     *
-     * Middleware ini memastikan hanya user dengan role_id = 1 (Administrator)
-     * yang bisa mengakses route tertentu.
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        // 1️⃣ Jika user belum login → arahkan ke halaman login
         if (!Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        // 2️⃣ Ambil role user dari session (diset saat login)
-        $userRole = session('user_role');
+        $user = Auth::user();
+        
+        // Mengambil semua role yang dimiliki user dan mencari yang aktif
+        $activeRoleUser = $user->roles->firstWhere('pivot.status', 1);
+        
+        // Jika tidak ada role aktif atau role aktif bukan Administrator (idrole = 1)
+        if (!$activeRoleUser || (int) $activeRoleUser->idrole !== 1) {
+            // Logout user dan redirect ke halaman login dengan pesan error
+            Auth::logout(); 
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
-        // 3️⃣ Cek apakah role ID sesuai dengan Administrator (1)
-        if ($userRole == 1) {
-            // Jika iya → izinkan lanjut ke halaman berikutnya
-            return $next($request);
+            return redirect()->route('login')
+                ->with('error', 'Akses ditolak. Anda bukan Administrator.');
         }
 
-        // 4️⃣ Jika bukan Administrator → tolak akses
-        return back()->with(
-            'error',
-            'Akses ditolak. Anda tidak memiliki izin untuk mengakses halaman ini.'
-        );
+        return $next($request);
     }
 }

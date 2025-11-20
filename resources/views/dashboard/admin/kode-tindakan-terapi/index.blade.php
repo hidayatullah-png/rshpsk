@@ -265,95 +265,86 @@
 </head>
 
 <body>
-    <x-layout>
+    <x-navbar />
 
-        <div class="main-container">
-            <h2>Manajemen Kode Tindakan Terapi</h2>
+    <div class="main-container">
+        <h2>Manajemen Kode Tindakan Terapi</h2>
 
-            @if (session('success'))
-                <div class="alert alert-success">
-                    {{ session('success') }}
-                </div>
-            @endif
-            @if (session('danger'))
-                <div class="alert alert-danger">
-                    {{ session('danger') }}
-                </div>
-            @endif
+        @if (session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if (session('danger'))
+            <div class="alert alert-danger">
+                {{ session('danger') }}
+            </div>
+        @endif
 
-            <div class="action-header">
+        <div class="action-header">
+            <a href="{{ route('dashboard.admin.kode-tindakan-terapi.create') }}" class="btn btn-success">
+                <i class="fas fa-plus-circle"></i> Tambah Tindakan
+            </a>
+        </div>
+
+        @if ($KodeTindakanTerapi->isNotEmpty())
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Deskripsi Tindakan</th>
+                            <th>Kategori</th>
+                            <th>Kategori Klinis</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($KodeTindakanTerapi as $tindakan)
+                            <tr>
+                                <td>{{ $loop->iteration }}</td>
+
+                                {{-- Kolom ini sudah benar 'deskripsi_tindakan_terapi' --}}
+                                <td>{{ $tindakan->deskripsi_tindakan_terapi }}</td>
+
+                                {{-- Menampilkan nama dari relasi --}}
+                                <td>{{ $tindakan->kategori->nama_kategori ?? 'N/A' }}</td>
+                                <td>{{ $tindakan->kategoriKlinis->nama_kategori_klinis ?? 'N/A' }}</td>
+
+                                <td class="action-buttons">
+                                    {{-- Variabel '$tindakan' sudah benar --}}
+                                    <a href="{{ route('dashboard.admin.kode-tindakan-terapi.edit', $tindakan->idkode_tindakan_terapi) }}"
+                                        class="btn btn-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+
+                                    <form
+                                        action="{{ route('dashboard.admin.kode-tindakan-terapi.destroy', $tindakan->idkode_tindakan_terapi) }}"
+                                        method="POST">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger"
+                                            onclick="return confirm('Apakah Anda yakin ingin menghapus tindakan ini ({{ $tindakan->deskripsi_tindakan_terapi }})?')">
+                                            <i class="fas fa-trash-alt"></i> Hapus
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <p class="empty-message">Tidak ada data kode tindakan terapi yang tersedia. Silakan tambahkan yang pertama!
+            </p>
+            <div class="empty-state-actions">
                 <a href="{{ route('admin.kode_tindakan_terapi.create') }}" class="btn btn-success">
-                    <i class="fas fa-plus-circle"></i> Tambah Tindakan
+                    <i class="fas fa-plus-circle"></i> Tambah Kode Tindakan Terapi Pertama
                 </a>
             </div>
+        @endif
 
-            {{--
-            FIX: Mengganti variabel '$list' menjadi '$KodeTindakanTerapi'
-            agar sesuai dengan Controller Anda.
-            --}}
-            @if ($KodeTindakanTerapi->isNotEmpty())
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>Deskripsi Tindakan</th>
-                                <th>Kategori</th>
-                                <th>Kategori Klinis</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{--
-                            FIX: Mengganti '$list' menjadi '$KodeTindakanTerapi'.
-                            Variabel '$tindakan' tetap dipertahankan agar bersih.
-                            --}}
-                            @foreach ($KodeTindakanTerapi as $tindakan)
-                                <tr>
-                                    <td>{{ $loop->iteration }}</td>
-
-                                    {{-- Kolom ini sudah benar 'deskripsi_tindakan_terapi' --}}
-                                    <td>{{ $tindakan->deskripsi_tindakan_terapi }}</td>
-
-                                    {{-- Menampilkan nama dari relasi --}}
-                                    <td>{{ $tindakan->kategori->nama_kategori ?? 'N/A' }}</td>
-                                    <td>{{ $tindakan->kategoriKlinis->nama_kategori_klinis ?? 'N/A' }}</td>
-
-                                    <td class="action-buttons">
-                                        {{-- Variabel '$tindakan' sudah benar --}}
-                                        <a href="{{ route('admin.kode_tindakan_terapi.edit', $tindakan->idkode_tindakan_terapi) }}"
-                                            class="btn btn-primary">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </a>
-
-                                        <form
-                                            action="{{ route('admin.kode_tindakan_terapi.destroy', $tindakan->idkode_tindakan_terapi) }}"
-                                            method="POST">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger"
-                                                onclick="return confirm('Apakah Anda yakin ingin menghapus tindakan ini ({{ $tindakan->deskripsi_tindakan_terapi }})?')">
-                                                <i class="fas fa-trash-alt"></i> Hapus
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <p class="empty-message">Tidak ada data kode tindakan terapi yang tersedia. Silakan tambahkan yang pertama!
-                </p>
-                <div class="empty-state-actions">
-                    <a href="{{ route('admin.kode_tindakan_terapi.create') }}" class="btn btn-success">
-                        <i class="fas fa-plus-circle"></i> Tambah Kode Tindakan Terapi Pertama
-                    </a>
-                </div>
-            @endif
-
-        </div>
-    </x-layout>
+    </div>
 </body>
 
 </html>

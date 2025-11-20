@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Kategori Klinis</title>
+    <title>Manajemen User</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -256,97 +256,95 @@
 </head>
 
 <body>
-    <x-layout>
+    <x-navbar />
 
-        <div class="main-container">
-            <h2>Manajemen Role Pengguna</h2>
+    <div class="main-container">
+        <h2>Manajemen Role Pengguna</h2>
 
-            @if (session('success'))
-                <div class="alert alert-success">
-                    {{ session('success') }}
-                </div>
-            @endif
-            @if (session('danger'))
-                <div class="alert alert-danger">
-                    {{ session('danger') }}
-                </div>
-            @endif
-
-            <div class="action-header">
-                {{-- Tombol untuk menambah Pet baru --}}
-                <a href="{{ route('dashboard.admin.role-user.create') }}" class="btn btn-success">
-                    <i class="fas fa-plus-circle"></i> Tambah Role ke User
-                </a>
+        @if (session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
             </div>
+        @endif
+        @if (session('danger'))
+            <div class="alert alert-danger">
+                {{ session('danger') }}
+            </div>
+        @endif
 
-            {{-- Controller Anda mengirimkan variabel 'user' (yang berisi list user) --}}
-            @if ($user->isNotEmpty())
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>Nama Pengguna</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($user as $singleUser)
+        <div class="action-header">
+            {{-- Tombol untuk menambah User baru --}}
+            {{-- Pastikan route ini ada di web.php Anda --}}
+            <a href="{{ route('dashboard.admin.role-user.create') }}" class="btn btn-success">
+                <i class="fas fa-plus-circle"></i> Tambah Role User
+            </a>
+        </div>
+
+        {{-- Controller Anda mengirimkan variabel 'users' (yang berisi list user) --}}
+        @if ($users->isNotEmpty())
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nama Pengguna</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($users as $user)
+                            {{--
+                            PERBAIKAN:
+                            Gunakan null coalescing operator (?? [])
+                            Ini akan menyediakan array kosong jika $user->roleUsers bernilai null,
+                            sehingga foreach tidak akan error.
+                            --}}
+                            @foreach ($user->roleUsers ?? [] as $roleUser)
                                 <tr>
-                                    <td>{{ $loop->iteration }}</td>
-                                    <td>{{ $singleUser->nama }}</td>
+                                    <td>{{ $loop->parent->iteration }}.{{ $loop->iteration }}</td>
+                                    <td>{{ $user->nama }}</td>
+                                    <td>{{ $roleUser->role->nama_role }}</td>
                                     <td>
-                                        @foreach ($singleUser->role as $r)
-                                            {{ $r->nama_role }} <br>
-                                        @endforeach
-                                    </td>
-                                    <td>
-                                        @foreach ($singleUser->role as $r)
-                                            @if ($r->pivot->status == 1)
-                                                <span
-                                                    style="background-color:#28a745;color:white;padding:4px 8px;border-radius:5px;font-size:1rem;">
-                                                    Aktif
-                                                </span>
-                                            @else
-                                                <span
-                                                    style="background-color:#dc3545;color:white;padding:4px 8px;border-radius:5px;font-size:1rem;">
-                                                    Nonaktif
-                                                </span>
-                                            @endif
-                                            <br>
-                                        @endforeach
+                                        @if ($roleUser->status == 1)
+                                            <span
+                                                style="background-color:#28a745;color:white;padding:4px 8px;border-radius:5px;font-size:0.9rem;">
+                                                Aktif
+                                            </span>
+                                        @else
+                                            <span
+                                                style="background-color:#dc3545;color:white;padding:4px 8px;border-radius:5px;font-size:0.9rem;">
+                                                Nonaktif
+                                            </span>
+                                        @endif
                                     </td>
                                     <td class="action-buttons">
-                                        {{-- Tombol Edit untuk user ini --}}
-                                        <a href="{{ route('dashboard.admin.role-user.edit', $singleUser->iduser) }}"
+                                        <a href="{{ route('dashboard.admin.role-user.edit', $roleUser->idrole_user) }}"
                                             class="btn btn-primary">
                                             <i class="fas fa-edit"></i> Edit
                                         </a>
-
-                                        {{-- Tombol Delete untuk user ini --}}
-                                        <form action="{{ route('dashboard.admin.role-user.destroy', $singleUser->iduser) }}"
-                                            method="POST">
+                                        <form action="{{ route('dashboard.admin.role-user.destroy', $roleUser->idrole_user) }}"
+                                            method="POST"
+                                            onsubmit="return confirm('Apakah Anda yakin ingin menghapus role \'{{ $roleUser->role->nama_role }}\' dari user \'{{ $user->nama }}\'?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="btn btn-danger"
-                                                onclick="return confirm('Apakah Anda yakin ingin menghapus role user \'{{ $singleUser->nama }}\'?')">
+                                            <button type="submit" class="btn btn-danger">
                                                 <i class="fas fa-trash-alt"></i> Hapus
                                             </button>
                                         </form>
                                     </td>
                                 </tr>
                             @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <p class="empty-message">Tidak ada data user yang tersedia.</p>
-            @endif
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <p class="empty-message">Tidak ada data user yang tersedia.</p>
+        @endif
 
-        </div>
-    </x-layout>
+    </div>
 </body>
 
 </html>

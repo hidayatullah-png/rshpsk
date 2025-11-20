@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Kategori Klinis</title>
+    <title>Manajemen Pet</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -238,12 +238,15 @@
                 margin: 1rem auto;
                 padding: 0.8rem;
             }
+
             .main-container h2 {
                 font-size: 1.5rem;
             }
+
             .data-table {
                 min-width: 400px;
             }
+
             .btn {
                 font-size: 0.85rem;
                 padding: 6px 10px;
@@ -251,106 +254,109 @@
         }
     </style>
 </head>
+
 <body>
-    <x-layout>
+    <x-navbar />
 
-        <div class="main-container">
-            <h2>Manajemen Pet</h2>
+    <div class="main-container">
+        <h2>Manajemen Pet</h2>
 
-            @if (session('success'))
-                <div class="alert alert-success">
-                    {{ session('success') }}
-                </div>
-            @endif
-            @if (session('danger'))
-                <div class="alert alert-danger">
-                    {{ session('danger') }}
-                </div>
-            @endif
+        @if (session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if (session('danger'))
+            <div class="alert alert-danger">
+                {{ session('danger') }}
+            </div>
+        @endif
 
-            <div class="action-header">
-                {{-- Tombol untuk menambah Pet baru --}}
-                <a href="{{ route('admin.pet.create') }}" class="btn btn-success">
-                    <i class="fas fa-plus-circle"></i> Tambah Pet
+        <div class="action-header">
+            {{-- Tombol untuk menambah Pet baru --}}
+            <a href="{{ route('dashboard.admin.pet.create') }}" class="btn btn-success">
+                <i class="fas fa-plus-circle"></i> Tambah Pet
+            </a>
+        </div>
+
+        {{-- Controller Anda mengirimkan variabel 'pets' --}}
+        @if ($pets->isNotEmpty())
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nama Pet</th>
+                            <th>Ras</th>
+                            <th>Jenis Hewan</th>
+                            <th>Pemilik</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($pets as $pet)
+                            <tr>
+                                <td>{{ $loop->iteration }}</td>
+                                <td>{{ $pet->nama }}</td>
+                                <td>
+                                    {{-- Cek jika relasi 'ras' ada --}}
+                                    @if ($pet->ras)
+                                        {{ $pet->ras->nama_ras }}
+                                    @else
+                                        <span style="color: red; font-style: italic;">N/A</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    {{-- Cek jika relasi 'ras' dan 'jenis' ada --}}
+                                    @if ($pet->ras && $pet->ras->jenis)
+                                        {{ $pet->ras->jenis->nama_jenis_hewan }}
+                                    @else
+                                        <span style="color: red; font-style: italic;">N/A</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    {{--
+                                    PERBAIKAN:
+                                    Data nama ada di relasi 'user' di dalam 'pemilik'.
+                                    Controller sudah me-load 'pemilik.user', jadi kita bisa akses.
+                                    --}}
+                                    @if ($pet->pemilik && $pet->pemilik->user)
+                                        {{ $pet->pemilik->user->nama }}
+                                    @else
+                                        <span style="color: red; font-style: italic;">Pemilik tidak ditemukan</span>
+                                    @endif
+                                </td>
+                                <td class="action-buttons">
+                                    {{-- Tombol Edit untuk pet ini --}}
+                                    <a href="{{ route('dashboard.admin.pet.edit', $pet->idpet) }}" class="btn btn-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+
+                                    {{-- Tombol Delete untuk pet ini --}}
+                                    <form action="{{ route('dashboard.admin.pet.destroy', $pet->idpet) }}" method="POST"
+                                        onsubmit="return confirm('Apakah Anda yakin ingin menghapus pet \'{{ $pet->nama }}\'?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-trash-alt"></i> Hapus
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <p class="empty-message">Tidak ada data pet yang tersedia.</p>
+            <div class="empty-state-actions">
+                <a href="{{ route('dashboard.admin.pet.create') }}" class="btn btn-success">
+                    <i class="fas fa-plus-circle"></i> Tambah Pet Pertama
                 </a>
             </div>
+        @endif
 
-            {{-- Controller Anda mengirimkan variabel 'pets' --}}
-            @if ($pets->isNotEmpty())
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>Nama Pet</th>
-                                <th>Ras</th>
-                                <th>Jenis Hewan</th>
-                                <th>Pemilik</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($pets as $pet)
-                                <tr>
-                                    <td>{{ $loop->iteration }}</td>
-                                    <td>{{ $pet->nama }}</td>
-                                    <td>
-                                        {{-- Cek jika relasi 'ras' ada --}}
-                                        @if ($pet->ras)
-                                            {{ $pet->ras->nama_ras }}
-                                        @else
-                                            <span style="color: red; font-style: italic;">N/A</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        {{-- Cek jika relasi 'ras' dan 'jenis' ada --}}
-                                        @if ($pet->ras && $pet->ras->jenis)
-                                            {{ $pet->ras->jenis->nama_jenis_hewan }}
-                                        @else
-                                            <span style="color: red; font-style: italic;">N/A</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        {{-- Cek jika relasi 'pemilik' ada --}}
-                                        @if ($pet->pemilik)
-                                            {{ $pet->pemilik->nama_pemilik }} {{-- Asumsi kolomnya 'nama_pemilik' --}}
-                                        @else
-                                            <span style="color: red; font-style: italic;">N/A</span>
-                                        @endif
-                                    </td>
-                                    <td class="action-buttons">
-                                        {{-- Tombol Edit untuk pet ini --}}
-                                        <a href="{{ route('admin.pet.edit', $pet->idpet) }}"
-                                            class="btn btn-primary">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </a>
-                                        
-                                        {{-- Tombol Delete untuk pet ini --}}
-                                        <form action="{{ route('admin.pet.destroy', $pet->idpet) }}" method="POST">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger"
-                                                onclick="return confirm('Apakah Anda yakin ingin menghapus pet \'{{ $pet->nama }}\'?')">
-                                                <i class="fas fa-trash-alt"></i> Hapus
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <p class="empty-message">Tidak ada data pet yang tersedia.</p>
-                <div class="empty-state-actions">
-                    <a href="{{ route('admin.pet.create') }}" class="btn btn-success">
-                        <i class="fas fa-plus-circle"></i> Tambah Pet Pertama
-                    </a>
-                </div>
-            @endif
-
-        </div>
-    </x-layout>
+    </div>
 </body>
 
 </html>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,15 +12,17 @@
         body {
             margin: 0;
             background-color: #f4f7f6;
-            font-family: 'Inter', sans-serif;
             color: #333;
+            padding-top: 110px;
         }
 
         /* --- Main Content Container (Diadaptasi dari referensi) --- */
         .main-container {
-            max-width: 600px; /* Lebar lebih sempit, cocok untuk form */
+            max-width: 600px;
+            /* Lebar lebih sempit, cocok untuk form */
             margin: 3rem auto;
-            padding: 2.5rem; /* Padding lebih besar untuk form */
+            padding: 2.5rem;
+            /* Padding lebih besar untuk form */
             background-color: white;
             border-radius: 12px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
@@ -32,16 +35,18 @@
             margin-top: 0;
             margin-bottom: 2rem;
             font-weight: 700;
-            text-align: center; /* Judul form di tengah */
+            text-align: center;
+            /* Judul form di tengah */
         }
 
         /* --- Form Styling (Baru) --- */
         .form-layout {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem; /* Jarak antar form group */
+            gap: 1.5rem;
+            /* Jarak antar form group */
         }
-        
+
         .form-group {
             display: flex;
             flex-direction: column;
@@ -61,7 +66,8 @@
             font-size: 1rem;
             border: 1px solid #ddd;
             border-radius: 8px;
-            box-sizing: border-box; /* Penting untuk padding agar pas */
+            box-sizing: border-box;
+            /* Penting untuk padding agar pas */
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
@@ -81,18 +87,22 @@
         /* Tombol Aksi Form (Baru) */
         .form-actions {
             display: flex;
-            justify-content: flex-end; /* Tombol di kanan */
+            justify-content: flex-end;
+            /* Tombol di kanan */
             gap: 0.75rem;
             margin-top: 1rem;
         }
 
         /* --- Button Styling (Diadaptasi dari referensi) --- */
         .btn {
-            padding: 10px 18px; /* Sedikit lebih besar untuk form */
+            padding: 10px 18px;
+            /* Sedikit lebih besar untuk form */
             border: none;
-            border-radius: 8px; /* Lebih bulat agar konsisten */
+            border-radius: 8px;
+            /* Lebih bulat agar konsisten */
             cursor: pointer;
-            font-weight: 600; /* Lebih tebal */
+            font-weight: 600;
+            /* Lebih tebal */
             transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
             font-size: 0.95rem;
             text-decoration: none;
@@ -127,7 +137,7 @@
             background-color: #e9e9e9;
             border-color: #ccc;
         }
-        
+
         /* --- Responsive Adjustments --- */
         @media (max-width: 768px) {
             .main-container {
@@ -153,7 +163,8 @@
 
             /* Tombol full-width di mobile untuk aksesibilitas */
             .form-actions {
-                flex-direction: column-reverse; /* Tombol utama (Simpan) di atas */
+                flex-direction: column-reverse;
+                /* Tombol utama (Simpan) di atas */
                 gap: 0.5rem;
             }
 
@@ -163,28 +174,25 @@
                 box-sizing: border-box;
             }
         }
-
     </style>
 </head>
+
 <body>
+    <x-navbar />
 
     <div class="main-container">
         <h2>Tambah Jenis Hewan</h2>
-        <form action="{{ route('jenis-hewan.store') }}" method="POST" class="form-layout">
-            @csrf <!-- Token CSRF Wajib untuk keamanan -->
+        <form action="{{ route('dashboard.admin.jenis-hewan.store') }}" method="POST" class="form-layout">
+            @csrf 
 
             <!-- Form Group untuk Nama Jenis Hewan -->
             <div class="form-group">
                 <label for="nama_jenis_hewan">Nama Jenis Hewan</label>
 
-                <input type="text" 
-                       id="nama_jenis_hewan" 
-                       name="nama_jenis_hewan" 
-                       class="form-control @if($errors->has('nama_jenis_hewan')) is-invalid @endif" 
-                       value="{{ old('nama_jenis_hewan') }}" 
-                       required 
-                       autofocus>
-                
+                <input type="text" id="nama_jenis_hewan" name="nama_jenis_hewan"
+                    class="form-control @if($errors->has('nama_jenis_hewan')) is-invalid @endif"
+                    value="{{ old('nama_jenis_hewan') }}" required autofocus>
+
                 <!-- Menampilkan pesan error validasi -->
                 @if ($errors->has('nama_jenis_hewan'))
                     <span class="error-message">
@@ -195,19 +203,20 @@
 
             <!-- Tombol Aksi Form -->
             <div class="form-actions">
-                <!-- Tombol kembali, mengarah ke halaman index -->
-                <a href="{{ route('jenis-hewan.index') }}" class="btn btn-secondary">
+                <!-- ✅ PERBAIKAN: Menggunakan nama route yang benar (dashboard.admin.jenis-hewan.index) -->
+                <a href="{{ route('dashboard.admin.jenis-hewan.index') }}" class="btn btn-secondary">
                     Kembali
                 </a>
-                
+
                 <!-- Tombol Submit Form -->
                 <button type="submit" class="btn btn-primary">
                     Simpan
                 </button>
             </div>
-            
+
         </form>
     </div>
 
 </body>
+
 </html>

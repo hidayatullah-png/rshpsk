@@ -238,12 +238,15 @@
                 margin: 1rem auto;
                 padding: 0.8rem;
             }
+
             .main-container h2 {
                 font-size: 1.5rem;
             }
+
             .data-table {
                 min-width: 400px;
             }
+
             .btn {
                 font-size: 0.85rem;
                 padding: 6px 10px;
@@ -253,74 +256,75 @@
 </head>
 
 <body>
-    <x-layout>
+    <x-navbar />
 
-        <div class="main-container">
-            <h2>Manajemen Kategori Klinis</h2>
+    <div class="main-container">
+        <h2>Manajemen Kategori Klinis</h2>
 
-            @if (session('success'))
-                <div class="alert alert-success">
-                    {{ session('success') }}
-                </div>
-            @endif
-            @if (session('danger'))
-                <div class="alert alert-danger">
-                    {{ session('danger') }}
-                </div>
-            @endif
+        @if (session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if (session('danger'))
+            <div class="alert alert-danger">
+                {{ session('danger') }}
+            </div>
+        @endif
 
-            <div class="action-header">
+        <div class="action-header">
+            <a href="{{ route('dashboard.admin.kategori-klinis.create') }}" class="btn btn-success">
+                <i class="fas fa-plus-circle"></i> Tambah Kategori
+            </a>
+        </div>
+
+        @if ($kategoriKlinis->isNotEmpty())
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nama Kategori Klinis</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($kategoriKlinis as $kategori)
+                            <tr>
+                                <td>{{ $loop->iteration }}</td>
+                                <td>{{ $kategori->nama_kategori_klinis }}</td>
+                                <td class="action-buttons">
+                                    <a href="{{ route('dashboard.admin.kategori-klinis.edit', $kategori->idkategori_klinis) }}"
+                                        class="btn btn-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+
+                                    <form
+                                        action="{{ route('dashboard.admin.kategori-klinis.destroy', $kategori->idkategori_klinis) }}"
+                                        method="POST">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger"
+                                            onclick="return confirm('Apakah Anda yakin ingin menghapus kategori ini ({{ $kategori->nama_kategori_klinis }})?')">
+                                            <i class="fas fa-trash-alt"></i> Hapus
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <p class="empty-message">Tidak ada data kategori klinis yang tersedia. Silakan tambahkan yang pertama!</p>
+            <div class="empty-state-actions">
                 <a href="{{ route('admin.kategori_klinis.create') }}" class="btn btn-success">
-                    <i class="fas fa-plus-circle"></i> Tambah Kategori
+                    <i class="fas fa-plus-circle"></i> Tambah Kategori Pertama
                 </a>
             </div>
+        @endif
 
-            @if ($kategoriKlinis->isNotEmpty())
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>Nama Kategori Klinis</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($KategoriKlinis as $KategoriKlinis)
-                                <tr>
-                                    <td>{{ $loop->iteration }}</td>
-                                    <td>{{ $KategoriKlinis->nama_kategori_klinis }}</td>
-                                    <td class="action-buttons">
-                                        <a href="{{ route('admin.kategori_klinis.edit', $KategoriKlinis->idkategori_klinis) }}"
-                                            class="btn btn-primary">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-
-                                        <form action="{{ route('admin.kategori_klinis.destroy', $KategoriKlinis->idkategori_klinis) }}" method="POST">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger"
-                                                onclick="return confirm('Apakah Anda yakin ingin menghapus kategori ini ({{ $KategoriKlinis->nama_kategori_klinis }})?')">
-                                                <i class="fas fa-trash-alt"></i> Hapus
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <p class="empty-message">Tidak ada data kategori klinis yang tersedia. Silakan tambahkan yang pertama!</p>
-                <div class="empty-state-actions">
-                    <a href="{{ route('admin.kategori_klinis.create') }}" class="btn btn-success">
-                        <i class="fas fa-plus-circle"></i> Tambah Kategori Pertama
-                    </a>
-                </div>
-            @endif
-
-        </div>
-    </x-layout>
+    </div>
 </body>
 
 </html>

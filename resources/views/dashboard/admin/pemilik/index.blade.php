@@ -4,23 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Ras Hewan</title> {{-- Judul diubah --}}
+    <title>Manajemen Pemilik</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* --- General Body & Font --- */
         body {
             margin: 0;
             background-color: #f4f7f6;
             padding-top: 110px;
+            /* Menambahkan font-family default */
         }
 
-
-        /* --- Main Content Container --- */
         .main-container {
             max-width: 1000px;
-            /* Sedikit lebih lebar agar tombol aksi tidak terlalu rapat */
             margin: 3rem auto;
             padding: 2rem;
             background-color: white;
@@ -37,7 +34,6 @@
             font-weight: 700;
         }
 
-        /* --- Action Header (untuk Tombol Tambah) --- */
         .action-header {
             display: flex;
             /* Gunakan flexbox untuk alignment yang lebih baik */
@@ -93,7 +89,29 @@
             background-color: #c82333;
         }
 
-        /* --- Table Styling --- */
+        /* --- Alert Styling --- */
+        .alert {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            text-align: left;
+        }
+
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+
         .table-responsive {
             overflow-x: auto;
         }
@@ -124,12 +142,10 @@
             font-size: 0.9rem;
         }
 
-        /* Alignment untuk Kolom No. dan Aksi */
         .data-table th:first-child,
         .data-table td:first-child {
             text-align: center;
             width: 50px;
-            /* Beri lebar tetap untuk kolom No. */
         }
 
         .data-table th:last-child,
@@ -246,12 +262,15 @@
                 margin: 1rem auto;
                 padding: 0.8rem;
             }
+
             .main-container h2 {
                 font-size: 1.5rem;
             }
+
             .data-table {
                 min-width: 400px;
             }
+
             .btn {
                 font-size: 0.85rem;
                 padding: 6px 10px;
@@ -261,75 +280,99 @@
 </head>
 
 <body>
-    <x-layout>
+    <x-navbar/>   
 
-        <div class="main-container">
-            <h2>Manajemen Ras Hewan</h2> {{-- Judul diubah --}}
+    <div class="main-container">
+        <h2>Manajemen Pemilik</h2>
 
-            <div class="action-header">
-                <a href="{{ route('admin.ras_hewan.create') }}" class="btn btn-success">
-                    <i class="fas fa-plus-circle"></i> Tambah Ras Hewan
+        @if (session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if (session('danger'))
+            <div class="alert alert-danger">
+                {{ session('danger') }}
+            </div>
+        @endif
+
+        <div class="action-header">
+            {{-- Tombol untuk menambah Pemilik baru --}}
+            <a href="{{ route('dashboard.admin.pemilik.create') }}" class="btn btn-success">
+                <i class="fas fa-plus-circle"></i> Tambah Pemilik
+            </a>
+        </div>
+
+        {{-- Controller Anda mengirimkan variabel 'pemilikList' --}}
+        @if ($pemilikList->isNotEmpty())
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nama Pemilik</th>
+                            <th>Email</th>
+                            <th>No. WhatsApp</th>
+                            <th>Alamat</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($pemilikList as $pemilik)
+                            <tr>
+                                <td>{{ $loop->iteration }}</td>
+                                <td>
+                                    {{-- Cek jika relasi 'user' ada --}}
+                                    @if ($pemilik->user)
+                                        {{ $pemilik->user->nama }}
+                                    @else
+                                        <span style="color: red; font-style: italic;">User N/A</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    {{-- Cek jika relasi 'user' ada --}}
+                                    @if ($pemilik->user)
+                                        {{ $pemilik->user->email }}
+                                    @else
+                                        <span style="color: red; font-style: italic;">User N/A</span>
+                                    @endif
+                                </td>
+                                <td>{{ $pemilik->no_wa }}</td>
+                                <td>{{ $pemilik->alamat }}</td>
+                                <td class="action-buttons">
+                                    {{-- Tombol Edit untuk pemilik ini --}}
+                                    <a href="{{ route('dashboard.admin.pemilik.edit', $pemilik->idpemilik) }}"
+                                        class="btn btn-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+
+                                    {{-- Tombol Delete untuk pemilik ini --}}
+                                    <form action="{{ route('dashboard.admin.pemilik.destroy', $pemilik->idpemilik) }}"
+                                        method="POST"
+                                        onsubmit="return confirm('Apakah Anda yakin ingin menghapus profil pemilik \'{{ $pemilik->user->nama ?? 'N/A' }}\'?\nIni tidak akan menghapus akun user-nya.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-trash-alt"></i> Hapus
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <p class="empty-message">Tidak ada data pemilik yang tersedia.</p>
+            <div class="empty-state-actions">
+                <a href="{{ route('dashboard.admin.pemilik.create') }}" class="btn btn-success">
+                    <i class="fas fa-plus-circle"></i> Tambah Pemilik Pertama
                 </a>
             </div>
+        @endif
 
-            @if ($jenisHewanRas->isNotEmpty())
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>Nama Ras</th>
-                                <th>Jenis Hewan</th> {{-- Kolom baru ditambahkan --}}
-                                <th colspan="2">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{-- Looping variabel $jenisHewanRas dari controller --}}
-                            @foreach ($jenisHewanRas as $jenis)
-                                @foreach ($jenis->ras as $ras)
-                                    <tr>
-                                        <td>{{ $loop->parent->iteration }}.{{ $loop->iteration }}</td>
-                                        <td>{{ htmlspecialchars($ras->nama_ras) }}</td>
-                                        <td>
-                                            @if ($ras->jenis)
-                                                {{ htmlspecialchars($ras->jenis->nama_jenis_hewan) }}
-                                            @else
-                                                <span style="color: red;">N/A</span>
-                                            @endif
-                                        </td>
+    </div>
 
-                                        <td class="action-buttons">
-                                            <a href="{{ route('admin.ras_hewan.edit', $ras->idras_hewan) }}"
-                                                class="btn btn-primary">
-                                                <i class="fas fa-edit"></i> Edit
-                                            </a>
-
-                                            <form action="{{ route('admin.ras_hewan.destroy', $ras->idras_hewan) }}" method="POST">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-danger"
-                                                    onclick="return confirm('Apakah Anda yakin ingin menghapus ras ini ({{ htmlspecialchars($ras->nama_ras) }})?')">
-                                                    <i class="fas fa-trash-alt"></i> Hapus
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <p class="empty-message">Tidak ada data ras hewan yang tersedia. Silakan tambahkan yang pertama!</p>
-                <div class="empty-state-actions">
-                    <a href="{{ route('admin.ras_hewan.create') }}" class="btn btn-success">
-                        <i class="fas fa-plus-circle"></i> Tambah Ras Hewan Pertama
-                    </a>
-                </div>
-            @endif
-
-        </div>
-    </x-layout>
 </body>
 
 </html>
