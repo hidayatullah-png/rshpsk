@@ -17,8 +17,7 @@ class RoleUser extends Model
      */
     public function user()
     {
-        // Argumen ke-2: foreign key di 'role_user'
-        // Argumen ke-3: primary key di 'user'
+
         return $this->belongsTo(User::class, 'iduser', 'iduser');
     }
 

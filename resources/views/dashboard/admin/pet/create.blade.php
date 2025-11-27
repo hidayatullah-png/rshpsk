@@ -1,192 +1,153 @@
-<!DOCTYPE html>
-<html lang="id">
+@extends('layouts.admin.admin')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambah Pet</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        body {
-            background-color: #f4f7f6;
-            margin: 0;
-            padding-top: 110px;
-        }
+@section('title', 'Tambah Pet Baru')
 
-        .main-container {
-            max-width: 500px;
-            margin: 3rem auto;
-            padding: 2rem;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
+@section('content')
 
-        h2 {
-            text-align: center;
-            color: #3ea2c7;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-        }
+    {{-- Panggil Component Admin Form --}}
+    <x-admin-form 
+        title="Tambah Pet Baru" 
+        action="{{ route('dashboard.admin.pet.store') }}" 
+        backRoute="{{ route('dashboard.admin.pet.index') }}"
+    >
+        
+        {{-- 1. Nama Pet --}}
+        <div>
+            <label for="nama" style="font-weight:600; color:#555;">Nama Pet</label>
+            <input type="text" id="nama" name="nama" 
+                   class="form-control" 
+                   value="{{ old('nama') }}" required placeholder="Masukkan nama hewan">
+            @error('nama') <div class="error-message">{{ $message }}</div> @enderror
+        </div>
 
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
+        {{-- 2. Tanggal Lahir --}}
+        <div>
+            <label for="tanggal_lahir" style="font-weight:600; color:#555;">Tanggal Lahir</label>
+            <input type="date" id="tanggal_lahir" name="tanggal_lahir" 
+                   class="form-control" 
+                   value="{{ old('tanggal_lahir') }}">
+            @error('tanggal_lahir') <div class="error-message">{{ $message }}</div> @enderror
+        </div>
 
-        label {
-            font-weight: 600;
-            color: #444;
-            text-align: left;
-            margin-bottom: 0.3rem;
-        }
+        {{-- 3. Warna / Tanda --}}
+        <div>
+            <label for="warna_tanda" style="font-weight:600; color:#555;">Warna / Tanda</label>
+            <input type="text" id="warna_tanda" name="warna_tanda" 
+                   class="form-control" 
+                   value="{{ old('warna_tanda') }}" placeholder="Contoh: Putih, Belang Tiga">
+            @error('warna_tanda') <div class="error-message">{{ $message }}</div> @enderror
+        </div>
 
-        input[type="text"],
-        select {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 1rem;
-            width: 100%;
-            box-sizing: border-box;
-        }
+        {{-- 4. Jenis Kelamin --}}
+        <div>
+            <label for="jenis_kelamin" style="font-weight:600; color:#555;">Jenis Kelamin</label>
+            <select id="jenis_kelamin" name="jenis_kelamin" class="form-control" required>
+                <option value="" disabled selected>-- Pilih Gender --</option>
+                
+                {{-- Kirim string "Jantan" ke controller --}}
+                <option value="Jantan" {{ old('jenis_kelamin') == 'Jantan' ? 'selected' : '' }}>Jantan</option>
+                
+                {{-- Kirim string "Betina" ke controller --}}
+                <option value="Betina" {{ old('jenis_kelamin') == 'Betina' ? 'selected' : '' }}>Betina</option>
+            </select>
+            @error('jenis_kelamin') <div class="error-message">{{ $message }}</div> @enderror
+        </div>
 
-        /* --- Form Buttons --- */
-        .form-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.75rem;
-            margin-top: 1rem;
-        }
+        {{-- 5. Pemilik --}}
+        <div>
+            <label for="idpemilik" style="font-weight:600; color:#555;">Pemilik</label>
+            <select id="idpemilik" name="idpemilik" class="form-control" required>
+                <option value="" disabled selected>-- Pilih Pemilik --</option>
+                @foreach ($pemilikList as $p)
+                    <option value="{{ $p->idpemilik }}" {{ old('idpemilik') == $p->idpemilik ? 'selected' : '' }}>
+                        {{ $p->user->nama ?? 'Tanpa Nama' }}
+                    </option>
+                @endforeach
+            </select>
+            @error('idpemilik') <div class="error-message">{{ $message }}</div> @enderror
+        </div>
 
-        .btn {
-            padding: 10px 18px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-            font-size: 0.95rem;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            white-space: nowrap;
-        }
+        <hr style="border:0; border-top:1px dashed #ddd; margin:0.5rem 0;">
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
+        {{-- 6. Jenis Hewan (Parent Dropdown) --}}
+        <div>
+            <label for="idjenis_hewan" style="font-weight:600; color:#555;">Jenis Hewan</label>
+            <select id="idjenis_hewan" class="form-control" required>
+                <option value="" disabled selected>-- Pilih Jenis Hewan --</option>
+                @foreach ($jenisList as $jenis)
+                    <option value="{{ $jenis->idjenis_hewan }}" {{ old('idjenis_hewan') == $jenis->idjenis_hewan ? 'selected' : '' }}>
+                        {{ $jenis->nama_jenis_hewan }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
 
-        .btn-primary {
-            background-color: #3ea2c7;
-            color: white;
-        }
+        {{-- 7. Ras Hewan (Child Dropdown) --}}
+        <div>
+            <label for="idras_hewan" style="font-weight:600; color:#555;">Ras Hewan</label>
+            <select id="idras_hewan" name="idras_hewan" class="form-control" required disabled>
+                <option value="" disabled selected>-- Pilih Jenis Hewan Terlebih Dahulu --</option>
+                {{-- Opsi akan diisi oleh JavaScript --}}
+            </select>
 
-        .btn-primary:hover {
-            background-color: #2e8aa8;
-        }
-
-        .btn-secondary {
-            background-color: #f1f1f1;
-            color: #555;
-            border: 1px solid #ddd;
-        }
-
-        .btn-secondary:hover {
-            background-color: #e9e9e9;
-            border-color: #ccc;
-        }
-
-        /* --- Responsive --- */
-        @media (max-width: 768px) {
-            .main-container {
-                margin: 2rem auto;
-                padding: 1.5rem;
-                max-width: 90%;
-            }
-
-            .main-container h2 {
-                font-size: 1.8rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .main-container {
-                margin: 1rem auto;
-                padding: 1rem;
-            }
-
-            .main-container h2 {
-                font-size: 1.5rem;
-            }
-
-            .form-actions {
-                flex-direction: column-reverse;
-                gap: 0.5rem;
-            }
-
-            .form-actions .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-    </style>
-</head>
-
-<body>
-    <x-navbar />
-
-    <div class="main-container">
-        <h2>Tambah Pet Baru</h2>
-
-        <form action="{{ route('dashboard.admin.pet.store') }}" method="POST">
-            @csrf
-
-            <div>
-                <label for="nama">Nama Pet</label>
-                <input type="text" id="nama" name="nama" required placeholder="Masukkan nama hewan">
+            <div id="loading-ras" style="display:none; color:#3ea2c7; font-size:0.85rem; margin-top:5px;">
+                <i class="fas fa-spinner fa-spin"></i> Mengambil data ras...
             </div>
 
-            <div>
-                <label for="idras">Ras Hewan</label>
-                <select name="idras" id="idras" class="form-control">
-                    <option value="">-- Pilih Ras --</option>
-                    @foreach ($rasList as $ras)
-                        <option value="{{ $ras->idras }}">
-                            {{ $ras->nama_ras }} ({{ $ras->jenis->nama_jenis ?? 'Tanpa Jenis' }})
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+            @error('idras_hewan') <div class="error-message">{{ $message }}</div> @enderror
+        </div>
 
-            <div>
-                <label for="idpemilik">Pemilik</label>
-                <select name="idpemilik" id="idpemilik" class="form-control">
-                    <option value="">-- Pilih Pemilik --</option>
-                    @foreach ($pemilikList as $p)
-                        <option value="{{ $p->idpemilik }}">
-                            {{ $p->user->nama ?? 'Tanpa Nama' }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+    </x-admin-form>
 
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Simpan
-                </button>
-                <a href="{{ route('dashboard.admin.pet.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Kembali
-                </a>
-            </div>
-        </form>
-    </div>
+    {{-- SCRIPT DEPENDENT DROPDOWN (Sama dengan Edit, tapi tanpa load awal) --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const jenisSelect = document.getElementById('idjenis_hewan');
+            const rasSelect = document.getElementById('idras_hewan');
+            const loadingText = document.getElementById('loading-ras');
 
-</body>
+            // Event saat Jenis Hewan dipilih
+            jenisSelect.addEventListener('change', function() {
+                const idJenis = this.value;
 
-</html>
+                // Reset Ras
+                rasSelect.innerHTML = '<option value="" disabled selected>-- Pilih Ras --</option>';
+                rasSelect.disabled = true;
+
+                if (idJenis) {
+                    loadingText.style.display = 'block';
+                    
+                    // Panggil API
+                    fetch(`/dashboard/admin/api/get-ras/${idJenis}`)
+                        .then(response => {
+                            if (!response.ok) throw new Error('Gagal mengambil data');
+                            return response.json();
+                        })
+                        .then(data => {
+                            loadingText.style.display = 'none';
+                            rasSelect.disabled = false;
+
+                            if (data.length > 0) {
+                                data.forEach(ras => {
+                                    const option = document.createElement('option');
+                                    option.value = ras.idras_hewan;
+                                    option.textContent = ras.nama_ras;
+                                    rasSelect.appendChild(option);
+                                });
+                            } else {
+                                const option = document.createElement('option');
+                                option.textContent = 'Tidak ada ras untuk jenis ini';
+                                rasSelect.appendChild(option);
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            loadingText.style.display = 'none';
+                            rasSelect.disabled = false;
+                        });
+                }
+            });
+        });
+    </script>
+
+@endsection

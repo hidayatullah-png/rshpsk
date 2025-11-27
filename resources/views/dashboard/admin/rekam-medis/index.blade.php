@@ -1,305 +1,125 @@
-<!DOCTYPE html>
-<html lang="id">
+@extends('layouts.admin.admin')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Rekam Medis - RSHP UNAIR</title>
-    <!-- Import Font Poppins -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Import Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+@section('title', 'Data Rekam Medis')
 
-    <style>
-        body {
-            margin: 0;
-            background-color: #f4f7f6;
-            color: #333;
-        }
+@section('content')
 
-        .main-container {
-            max-width: 1000px;
-            margin: 3rem auto;
-            padding: 2rem;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
+<div class="main-container">
+    <h2>Data Rekam Medis</h2>
 
-        h1 {
-            font-size: 2.2rem; /* Style dari h2 referensi */
-            color: #3ea2c7;
-            margin-bottom: 1.5rem;
-            text-align: center;
-            font-weight: 700; /* Style dari h2 referensi */
-        }
-
-        .action-header {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 1.2rem;
-        }
-
-        .btn {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px; /* Radius dari referensi */
-            cursor: pointer;
-            font-weight: 500;
-            transition: background-color 0.3s ease, transform 0.2s ease; /* Transisi dari referensi */
-            font-size: 0.9rem;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem; /* Gap dari referensi */
-            white-space: nowrap;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px); /* Efek hover dari referensi */
-        }
-
-        .btn-primary {
-            background-color: #3ea2c7;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #2e8aa8;
-        }
-
-        .btn-warning {
-            background-color: #f0ad4e;
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background-color: #ec971f;
-        }
-
-        .btn-danger {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background-color: #c82333;
-        }
-
-        .table-responsive {
-            overflow-x: auto;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e0e0e0;
-            overflow: hidden; /* Untuk border-radius di tabel */
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: separate; /* Dari referensi */
-            border-spacing: 0;
-        }
-
-        .data-table th,
-        .data-table td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-            vertical-align: middle;
-            font-size: 0.95rem;
-        }
-
-        .data-table th {
-            background-color: #3ea2c7;
-            color: white;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            font-weight: 600; /* Dari referensi */
-        }
-
-        /* Styling kolom pertama (No) */
-        .data-table th:first-child,
-        .data-table td:first-child {
-            text-align: center;
-            width: 50px;
-        }
-
-        /* Styling kolom terakhir (Aksi) */
-        .data-table th:last-child,
-        .data-table td.action-buttons {
-            text-align: center;
-            width: 200px; /* Beri ruang lebih untuk 2 tombol */
-        }
-
-        .data-table th:first-child {
-            border-top-left-radius: 8px; /* Sudut bulat dari referensi */
-        }
-
-        .data-table th:last-child {
-            border-top-right-radius: 8px; /* Sudut bulat dari referensi */
-        }
-
-        .action-buttons {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 0.5rem;
-            flex-wrap: nowrap; /* Mencegah tombol turun baris */
-        }
-
-        .action-buttons form {
-            margin: 0;
-            padding: 0;
-            display: inline-block;
-        }
-
-        .data-table tbody tr:nth-child(even) {
-            background-color: #f9f9f9; /* Zebra striping dari referensi */
-        }
-
-        .data-table tbody tr:hover {
-            background-color: #eaf6fc; /* Efek hover dari referensi */
-        }
-
-        .data-table td.empty-row-cell {
-            text-align: center;
-            padding: 2rem;
-            color: #777;
-            font-size: 1.1rem;
-            background-color: #fdfdfd;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 8px; /* Samakan dengan container */
-            margin-bottom: 1.5rem;
-            text-align: center;
-            font-weight: 500;
-            border: 1px solid transparent;
-        }
-
-        .alert-success {
-            background-color: #d4edda;
-            border-color: #c3e6cb;
-            color: #155724;
-        }
-
-        .alert-danger {
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-            color: #721c24;
-        }
-
-        .total-count {
-            margin-top: 1rem;
-            color: #555;
-            font-size: 0.9rem;
-            text-align: right;
-            padding-right: 5px;
-        }
-
-        @media (max-width: 768px) {
-            .main-container {
-                margin: 1rem;
-                padding: 1rem;
-            }
-
-            .data-table th,
-            .data-table td {
-                padding: 8px 10px;
-            }
+    {{-- Action Header: Filter di Kiri, Tambah di Kanan --}}
+    <div class="action-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom: 1.5rem;">
+        
+        {{-- Grup Tombol Filter --}}
+        <div class="filter-group">
+            <a href="{{ route('dashboard.admin.rekam-medis.index') }}" 
+               class="btn {{ request('filter') != 'today' ? 'btn-primary' : 'btn-secondary' }}">
+                <i class="fas fa-history"></i> Semua History
+            </a>
             
-            .action-buttons {
-                flex-direction: column; /* Tombol aksi jadi vertikal di mobile */
-                gap: 0.3rem;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-    </style>
-</head>
-
-<body>
-    <x-navbar />
-
-    <div class="main-container">
-        <h1>Data Rekam Medis</h1>
-
-        {{-- ✅ Flash Messages --}}
-        @foreach(['success' => 'alert-success', 'danger' => 'alert-danger'] as $type => $class)
-            @if(session($type))
-                <div class="alert {{ $class }}">
-                    {{ session($type) }}
-                </div>
-            @endif
-        @endforeach
-
-        {{-- 🔹 Tombol Tambah --}}
-        <div class="action-header">
-            <a href="{{ route('dashboard.admin.rekam-medis.create') }}" class="btn btn-primary">
-                <i class="fas fa-plus-circle"></i> Tambah Rekam Medis
+            <a href="{{ route('dashboard.admin.rekam-medis.index', ['filter' => 'today']) }}" 
+               class="btn {{ request('filter') == 'today' ? 'btn-primary' : 'btn-secondary' }}">
+                <i class="fas fa-calendar-day"></i> Hari Ini
             </a>
         </div>
 
-        {{-- 🔹 Tabel Data --}}
+    </div>
+
+    {{-- Flash Message --}}
+    @if(session('success'))
+        <div class="alert alert-success" style="margin-bottom: 1rem; padding: 10px; background-color: #d4edda; color: #155724; border-radius: 5px;">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    {{-- Tabel Data --}}
+    @if($data->isNotEmpty())
         <div class="table-responsive">
-            <table class="data-table">
+            <table class="data-table" style="width: 100%; border-collapse: collapse;">
                 <thead>
-                    <tr>
-                        <th>No</th>
-                        <th>Tanggal</th>
-                        <th>Nama Hewan</th>
-                        <th>Pemilik</th>
-                        <th>Dokter Pemeriksa</th>
-                        <th>Diagnosa</th>
-                        <th>Aksi</th>
+                    <tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <th style="padding: 12px; text-align:center; width:50px;">No</th>
+                        <th style="padding: 12px; text-align: left;">Tanggal Periksa</th>
+                        <th style="padding: 12px; text-align: left;">Nama Hewan</th>
+                        <th style="padding: 12px; text-align: left;">Pemilik</th>
+                        <th style="padding: 12px; text-align: left;">Dokter</th>
+                        <th style="padding: 12px; text-align: left;">Diagnosa</th>
+                        <th style="padding: 12px; text-align:center; width:180px;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($data as $index => $item)
-                        <tr>
-                            <td>{{ $index + 1 }}</td>
-                            <td>{{ \Carbon\Carbon::parse($item->created_at)->format('d M Y') }}</td>
-                            <td>{{ $item->pet->nama ?? '-' }}</td>
-                            <td>{{ $item->pet->pemilik->user->nama ?? '-' }}</td>
-                            <td>{{ $item->dokter->nama ?? 'N/A' }}</td>
-                            <td>{{ Str::limit($item->diagnosa, 50, '...') ?? '-' }}</td>
-                            <td class="action-buttons">
-                                <a href="{{ route('dashboard.admin.rekam-medis.edit', $item->idrekam_medis) }}" class="btn btn-warning">
-                                    <i class="fas fa-edit"></i> Ubah
-                                </a>
+                    @foreach($data as $item)
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 12px; text-align:center;">{{ $loop->iteration + $data->firstItem() - 1 }}</td>
+                            
+                            {{-- Tanggal & Jam --}}
+                            <td style="padding: 12px;">
+                                @if($item->created_at)
+                                    <div style="font-weight:600;">{{ \Carbon\Carbon::parse($item->created_at)->format('d M Y') }}</div>
+                                    <small style="color:#888;">{{ \Carbon\Carbon::parse($item->created_at)->format('H:i') }} WIB</small>
+                                @else
+                                    -
+                                @endif
+                            </td>
 
-                                <form action="{{ route('dashboard.admin.rekam-medis.destroy', $item->idrekam_medis) }}"
-                                    method="POST"
-                                    onsubmit="return confirm('Yakin ingin menghapus rekam medis ini?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger">
-                                        <i class="fas fa-trash-alt"></i> Hapus
-                                    </button>
-                                </form>
+                            {{-- 
+                                PERBAIKAN UTAMA:
+                                Mengambil data via relasi 'temuDokter' karena 'idpet' ada di tabel temu_dokter 
+                            --}}
+                            <td style="padding: 12px;">
+                                {{ $item->temuDokter->pet->nama ?? '-' }}
+                            </td>
+                            
+                            <td style="padding: 12px;">
+                                {{ $item->temuDokter->pet->pemilik->user->nama ?? '-' }}
+                            </td>
+                            
+                            {{-- Relasi Dokter --}}
+                            <td style="padding: 12px;">{{ $item->dokter->nama ?? 'Belum ditentukan' }}</td>
+                            
+                            {{-- Diagnosa (Limit Text) --}}
+                            <td style="padding: 12px;">{{ Str::limit($item->diagnosa, 40, '...') ?? '-' }}</td>
+
+                            {{-- Tombol Aksi --}}
+                            <td style="padding: 12px; text-align: center;">
+                                <div style="display: flex; justify-content: center; gap: 5px;">
+                                    <a href="{{ route('dashboard.admin.rekam-medis.edit', $item->idrekam_medis) }}" class="btn btn-warning btn-sm" style="color:white; padding: 5px 10px; font-size: 0.8rem;">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+
+                                    <form action="{{ route('dashboard.admin.rekam-medis.destroy', $item->idrekam_medis) }}" method="POST"
+                                          onsubmit="return confirm('Hapus rekam medis hewan {{ $item->temuDokter->pet->nama ?? '' }}?');" 
+                                          style="margin:0;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 0.8rem;">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="empty-row-cell">
-                                Belum ada data rekam medis.
-                            </td>
-                        </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
         </div>
 
-        <div class="total-count">
-            Total: <strong>{{ $data->count() }}</strong> rekam medis.
+        {{-- Pagination --}}
+        <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+             <div style="font-size: 0.9rem; color: #666;">
+                 Total Data: <strong>{{ $data->total() }}</strong>
+             </div>
+             <div>
+                {{ $data->links() }} 
+             </div>
         </div>
-    </div>
-</body>
 
-</html>
+    @else
+        {{-- Empty State --}}
+        <div class="empty-message" style="text-align: center; padding: 2rem; background: #f9f9f9; border-radius: 8px; margin-top: 1rem;">
+            <p style="color: #777; font-size: 1.1rem;">Belum ada data rekam medis.</p>
+        </div>
+    @endif
+</div>
+
+@endsection

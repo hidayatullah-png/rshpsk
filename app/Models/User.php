@@ -28,7 +28,7 @@ class User extends Authenticatable
     public function roles()
     {
         return $this->belongsToMany(Role::class, 'role_user', 'iduser', 'idrole')
-                    ->withPivot('status', 'idrole_user');
+            ->withPivot('status', 'idrole_user');
     }
 
     /** 🔹 Relasi one-to-many ke RoleUser */
@@ -41,5 +41,15 @@ class User extends Authenticatable
     public function pemilik()
     {
         return $this->hasOne(Pemilik::class, 'iduser', 'iduser');
+    }
+    public function dokter()
+    {
+        return $this->hasOne(Dokter::class, 'iduser', 'iduser');
+    }
+
+    // Relasi ke Perawat
+    public function perawat()
+    {
+        return $this->hasOne(Perawat::class, 'iduser', 'iduser');
     }
 }

@@ -1,187 +1,241 @@
 <?php
 
-// Ganti namespace agar sesuai dengan path file (Admin)
-namespace App\Http\Controllers\Admin; 
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Role;
-use App\Models\RoleUser; // Import RoleUser yang sangat penting
+use App\Models\RoleUser;
+// Import Model Dokter & Perawat
+use App\Models\Dokter;
+use App\Models\Perawat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB; // Penting untuk Transaction
 
-// Ganti nama class agar sesuai dengan nama file (UserRoleController)
 class UserRoleController extends Controller
 {
-    /**
-     * 🔸 Tampilkan semua user dan role user
-     */
-    public function index()
-    {
-        // PERBAIKAN: Ganti 'roles' menjadi 'roleUsers.role' 
-        // agar sesuai dengan apa yang dibutuhkan oleh index.blade.php
-        $users = User::with(['roleUsers.role'])->orderBy('nama')->get();
-        
-        // $roles tidak digunakan di index.blade.php, tapi tidak apa-apa
-        $roles = Role::orderBy('nama_role')->get(); 
+    // ... (method index, create, store, edit tetap sama seperti sebelumnya) ...
 
-        return view('dashboard.admin.role-user.index', compact('users', 'roles'));
+    public function index(Request $request)
+    {
+        $targetStatus = $request->has('status') && $request->status == '0' ? 0 : 1;
+        $isShowingNonActive = $targetStatus === 0;
+
+        $users = User::with(['roleUsers.role'])->orderBy('nama')->get();
+        $tableRows = collect();
+
+        foreach ($users as $user) {
+            foreach ($user->roleUsers ?? [] as $roleUser) {
+                if ($roleUser->status == $targetStatus) {
+                    $isPemilik = strtolower($roleUser->role->nama_role) === 'pemilik';
+                    $tableRows->push((object)[
+                        'user_name' => $user->nama,
+                        'role_name' => $roleUser->role->nama_role,
+                        'status'    => $roleUser->status,
+                        'id'        => $roleUser->idrole_user,
+                        'is_pemilik'=> $isPemilik,
+                        'roleUser'  => $roleUser 
+                    ]);
+                }
+            }
+        }
+        $sortedRows = $tableRows->sortBy('is_pemilik');
+        return view('dashboard.admin.role-user.index', compact('sortedRows', 'isShowingNonActive'));
     }
 
-    /**
-     * 🔸 Form tambah user baru
-     */
     public function create()
     {
-        // Ambil semua user yang belum memiliki role
-        // 'roles' adalah nama relasi yang benar di User.php (belongsToMany)
-        $users = User::doesntHave('roles')->orderBy('nama')->get();
+        $users = User::orderBy('nama')->get();
         $roles = Role::orderBy('nama_role')->get();
-        
-        // Pastikan view ini ada
         return view('dashboard.admin.role-user.create', compact('users', 'roles'));
     }
 
-    /**
-     * 🔸 Simpan user baru dan role-nya
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'nama' => 'required|string|max:255',
-            'email' => 'required|email|unique:user,email',
+            'nama'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:user,email', 
             'password' => 'required|min:6',
-            'idrole' => 'required|exists:role,idrole',
-        ], [
-            'nama.required' => 'Nama wajib diisi.',
-            'email.required' => 'Email wajib diisi.',
-            'email.unique' => 'Email sudah terdaftar.',
-            'password.required' => 'Password wajib diisi.',
-            'password.min' => 'Password minimal 6 karakter.',
-            'idrole.required' => 'Role wajib dipilih.',
-            'idrole.exists' => 'Role tidak valid.',
+            'idrole'   => 'required|exists:role,idrole',
         ]);
 
-        // Buat user baru
-        $user = User::create([
-            'nama' => $request->nama,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        $role = Role::find($request->idrole);
+        $roleName = strtolower($role->nama_role);
+        $isDokter = str_contains($roleName, 'dokter');
+        $isPerawat = str_contains($roleName, 'perawat');
 
-        // Tambahkan role ke user baru
-        // 'roles' adalah relasi belongsToMany, 'attach' sudah benar
-        $user->roles()->attach($request->idrole, ['status' => 1]); 
-
-        return redirect()->route('dashboard.admin.role-user.index')
-            ->with('success', '✅ User baru dan role berhasil ditambahkan.');
-    }
-
-    /**
-     * 🔸 Form edit user + role
-     */
-    public function edit($id)
-    {
-        // $id di sini adalah 'idrole_user' dari blade
-        $roleUser = RoleUser::with(['user', 'role'])->find($id);
-
-        if (!$roleUser) {
-            return redirect()->route('dashboard.admin.role-user.index')
-                ->with('danger', '❌ Data tidak ditemukan.');
+        if ($isDokter) {
+            $request->validate([
+                'alamat'        => 'required|string',
+                'no_hp'         => 'required|string',
+                'jenis_kelamin' => 'required|in:L,P',
+                'bidang_dokter' => 'required|string',
+            ]);
+        } elseif ($isPerawat) {
+            $request->validate([
+                'alamat'        => 'required|string',
+                'no_hp'         => 'required|string',
+                'jenis_kelamin' => 'required|in:L,P',
+                'pendidikan'    => 'required|string',
+            ]);
         }
 
-        // Ambil semua role
-        $roles = Role::orderBy('nama_role')->get();
-        
-        // Ambil semua user.
-        $users = User::orderBy('nama')->get();
+        DB::beginTransaction();
+        try {
+            $user = User::create([
+                'nama'     => $request->nama,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
+            ]);
 
-        return view('dashboard.admin.role-user.edit', compact('roleUser', 'roles', 'users'));
+            $user->roles()->attach($request->idrole, ['status' => 1]); 
+
+            if ($isDokter) {
+                Dokter::create([
+                    'id_user'       => $user->getKey(),
+                    'alamat'        => $request->alamat,
+                    'no_hp'         => $request->no_hp,
+                    'jenis_kelamin' => $request->jenis_kelamin,
+                    'bidang_dokter' => $request->bidang_dokter,
+                ]);
+            } elseif ($isPerawat) {
+                Perawat::create([
+                    'id_user'       => $user->getKey(),
+                    'alamat'        => $request->alamat,
+                    'no_hp'         => $request->no_hp,
+                    'jenis_kelamin' => $request->jenis_kelamin,
+                    'pendidikan'    => $request->pendidikan,
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('dashboard.admin.role-user.index')
+                ->with('success', '✅ Data berhasil ditambahkan.');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('danger', '❌ Error: ' . $e->getMessage())->withInput();
+        }
     }
 
-    /**
-     * 🔸 Form edit status role user
-     * (Anda punya method ini, pastikan route-nya ada)
-     */
-    public function editStatus($id)
+    public function edit($id)
     {
-        $roleUser = RoleUser::with(['user', 'role'])->findOrFail($id);
-
-        return view('dashboard.admin.role-user.edit-status', compact('roleUser'));
+        $roleUser = RoleUser::with(['user', 'role'])->find($id);
+        if (!$roleUser) {
+            return redirect()->route('dashboard.admin.role-user.index')->with('danger', '❌ Data tidak ditemukan.');
+        }
+        $roles = Role::orderBy('nama_role')->get();
+        return view('dashboard.admin.role-user.edit', compact('roleUser', 'roles'));
     }
 
     /**
-     * 🔸 Update data user dan role
+     * 🔸 Update data user + role + profil dokter/perawat
      */
     public function update(Request $request, $id)
     {
-        // $id di sini adalah 'idrole_user'
-        $roleUser = RoleUser::findOrFail($id);
+        // 1. Ambil Data
+        $roleUser = RoleUser::with('user')->findOrFail($id);
+        $user     = $roleUser->user;
 
+        // 2. Validasi User & Role Dasar
         $request->validate([
+            'nama'   => 'required|string|max:255',
+            'email'  => 'required|email|max:255|unique:user,email,' . $user->getKey() . ',' . $user->getKeyName(),
             'idrole' => 'required|exists:role,idrole',
-            'status' => 'required|boolean',
-        ], [
-            'idrole.required' => 'Role wajib dipilih.',
-            'idrole.exists' => 'Role tidak valid.',
-            'status.required' => 'Status wajib dipilih.',
-            'status.boolean' => 'Status tidak valid.',
+            'status' => 'required', 
         ]);
 
-        // Cek duplikasi role untuk user yang sama, kecuali role_user yang sedang diupdate
-        $exists = RoleUser::where('iduser', $roleUser->iduser)
+        // 3. Cek Role Baru untuk Validasi Tambahan
+        $role = Role::find($request->idrole);
+        $roleName = strtolower($role->nama_role);
+        $isDokter = str_contains($roleName, 'dokter');
+        $isPerawat = str_contains($roleName, 'perawat');
+
+        // Validasi field spesifik jika role berubah jadi Dokter/Perawat
+        if ($isDokter) {
+            $request->validate([
+                'alamat'        => 'required|string',
+                'no_hp'         => 'required|string',
+                'jenis_kelamin' => 'required|in:L,P',
+                'bidang_dokter' => 'required|string',
+            ]);
+        } elseif ($isPerawat) {
+            $request->validate([
+                'alamat'        => 'required|string',
+                'no_hp'         => 'required|string',
+                'jenis_kelamin' => 'required|in:L,P',
+                'pendidikan'    => 'required|string',
+            ]);
+        }
+
+        // 4. Cek Duplikasi Role (Agar user tidak punya 2 role yang sama)
+        $exists = RoleUser::where('iduser', $user->getKey())
             ->where('idrole', $request->idrole)
             ->where('idrole_user', '!=', $id)
             ->exists();
 
         if ($exists) {
-            return redirect()->route('dashboard.admin.role-user.index')
-                ->with('danger', '⚠️ User ini sudah memiliki role tersebut.');
+            return redirect()->back()->with('danger', '⚠️ User ini sudah memiliki role tersebut.')->withInput();
         }
 
-        $roleUser->update([
-            'idrole' => $request->idrole,
-            'status' => $request->status,
-        ]);
+        // 5. Mulai Transaksi Database
+        DB::beginTransaction();
 
-        return redirect()->route('dashboard.admin.role-user.index')
-            ->with('success', '✏️ Role user berhasil diperbarui.');
+        try {
+            // A. Update User (Nama & Email)
+            $user->update([
+                'nama'  => $request->nama,
+                'email' => $request->email,
+            ]);
+
+            // B. Update RoleUser (Role & Status)
+            $roleUser->update([
+                'idrole' => $request->idrole,
+                'status' => $request->status,
+            ]);
+
+            // C. Update atau Buat Profil Dokter/Perawat
+            // Fungsi updateOrCreate akan mencari data berdasarkan 'id_user'.
+            // Jika ada -> Update. Jika tidak ada -> Create baru.
+            if ($isDokter) {
+                Dokter::updateOrCreate(
+                    ['id_user' => $user->getKey()], // Kriteria pencarian
+                    [
+                        'alamat'        => $request->alamat,
+                        'no_hp'         => $request->no_hp,
+                        'jenis_kelamin' => $request->jenis_kelamin,
+                        'bidang_dokter' => $request->bidang_dokter,
+                    ]
+                );
+            } elseif ($isPerawat) {
+                Perawat::updateOrCreate(
+                    ['id_user' => $user->getKey()], // Kriteria pencarian
+                    [
+                        'alamat'        => $request->alamat,
+                        'no_hp'         => $request->no_hp,
+                        'jenis_kelamin' => $request->jenis_kelamin,
+                        'pendidikan'    => $request->pendidikan,
+                    ]
+                );
+            }
+
+            DB::commit(); // Simpan permanen
+
+            return redirect()->route('dashboard.admin.role-user.index')
+                ->with('success', '✏️ Data user, role, dan profil berhasil diperbarui.');
+
+        } catch (\Exception $e) {
+            DB::rollback(); // Batalkan jika error
+            return redirect()->back()
+                ->with('danger', '❌ Terjadi kesalahan: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 
-    /**
-     * 🔸 Update status role user
-     * (Anda punya method ini, pastikan route-nya ada)
-     */
-    public function updateStatus(Request $request, $id)
-    {
-        $roleUser = RoleUser::findOrFail($id);
-
-        $request->validate([
-            'status' => 'required|boolean',
-        ], [
-            'status.required' => 'Status wajib dipilih.',
-            'status.boolean' => 'Status tidak valid.',
-        ]);
-
-        $roleUser->update([
-            'status' => $request->status,
-        ]);
-
-        return redirect()->route('dashboard.admin.role-user.index')
-            ->with('success', '✏️ Data user dan role berhasil diperbarui.');
-    }
-
-    /**
-     * 🔸 Hapus user dan role-nya
-     */
     public function destroy($id)
     {
-        // Hanya menghapus relasi role_user, bukan user-nya. Ini sudah benar.
-        RoleUser::destroy($id);
-
-        return redirect()
-            ->route('dashboard.admin.role-user.index')
-            ->with('success', '🗑️ Role user berhasil dihapus.');
+        $roleUser = RoleUser::findOrFail($id);
+        $roleUser->delete();
+        return redirect()->route('dashboard.admin.role-user.index')->with('success', '🗑️ Role user berhasil dihapus.');
     }
 }

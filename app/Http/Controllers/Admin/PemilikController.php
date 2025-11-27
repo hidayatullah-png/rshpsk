@@ -4,31 +4,31 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Pemilik; 
-use App\Models\User;    
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use App\Models\Pemilik;
+use App\Models\User;
+use App\Models\Role;
 
 class PemilikController extends Controller
 {
-    /** Helper flash message */
     private function redirectWithMessage($route, $message, $type = 'success')
     {
         return redirect()->route($route)->with($type, $message);
     }
 
-    /** Tampilkan semua data pemilik */
     public function index()
     {
         try {
-            // Gunakan Eloquent dan Eager Loading 'user'
             $pemilikList = Pemilik::with('user')
-                ->whereHas('user') // Hanya tampilkan pemilik yang punya user
+                ->whereHas('user')
                 ->get()
-                ->sortBy(function($pemilik) { // Urutkan berdasarkan nama user
+                ->sortBy(function ($pemilik) {
                     return $pemilik->user->nama;
                 });
-                
+
             return view('dashboard.admin.pemilik.index', compact('pemilikList'));
         } catch (\Throwable $e) {
             Log::error("Error fetch pemilik: " . $e->getMessage());
@@ -36,101 +36,116 @@ class PemilikController extends Controller
         }
     }
 
-    /** Form tambah pemilik */
     public function create()
     {
-        // Ambil user yang BELUM punya profil pemilik
-        $users = User::doesntHave('pemilik')->orderBy('nama')->get();
-        return view('dashboard.admin.pemilik.create', compact('users'));
+        return view('dashboard.admin.pemilik.create');
     }
 
-    /** Simpan data baru */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            // Validasi iduser, bukan membuat user baru
-            'iduser' => 'required|exists:user,iduser|unique:pemilik,iduser',
-            'no_wa' => 'required|string|max:20',
-            'alamat' => 'required|string|max:255',
-        ], [
-            'iduser.required' => 'User wajib dipilih.',
-            'iduser.unique' => 'User ini sudah memiliki profil pemilik.',
+        $request->validate([
+            // Data Akun
+            'nama'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:user,email',
+            'password' => 'required|min:6',
+            // Data Profil
+            'no_wa'    => 'required|string|max:20',
+            'alamat'   => 'required|string|max:255',
         ]);
 
-        try {
-            // Cukup buat data Pemilik, karena User sudah ada
-            Pemilik::create($validated);
+        DB::beginTransaction();
 
-            return $this->redirectWithMessage('dashboard.admin.pemilik.index', '✅ Profil Pemilik baru berhasil ditambahkan.');
+        try {
+            // 1. Buat User (Nama & Email disimpan di sini)
+            $user = User::create([
+                'nama'     => $request->nama,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
+            ]);
+
+            // 2. Buat Profil Pemilik
+            // HAPUS 'nama' & 'email' dari sini agar tidak error
+            Pemilik::create([
+                'iduser' => $user->iduser,
+                'no_wa'  => $request->no_wa,
+                'alamat' => $request->alamat,
+            ]);
+
+            // 3. Assign Role
+            $rolePemilik = Role::where('nama_role', 'Pemilik')->first();
+            if ($rolePemilik) {
+                $user->roles()->attach($rolePemilik->idrole, ['status' => 1]);
+            }
+
+            DB::commit();
+            return $this->redirectWithMessage('dashboard.admin.pemilik.index', '✅ User & Profil Pemilik berhasil dibuat.');
+
         } catch (\Throwable $e) {
-            Log::error("Error insert pemilik: " . $e->getMessage());
-            return back()->withInput()->with('danger', 'Gagal menambahkan data.');
+            DB::rollBack();
+            Log::error("Error create pemilik: " . $e->getMessage());
+            return back()->withInput()->with('danger', 'Gagal menyimpan data: ' . $e->getMessage());
         }
     }
 
-    /** Form edit */
     public function edit($id)
     {
         try {
             $pemilik = Pemilik::with('user')->find($id);
-            if (!$pemilik) {
-                return $this->redirectWithMessage('dashboard.admin.pemilik.index', 'Data tidak ditemukan.', 'danger');
-            }
+            if (!$pemilik) return back()->with('danger', 'Data tidak ditemukan.');
             
-            // Ambil semua user. User yang sedang diedit akan otomatis terpilih di form.
-            $users = User::orderBy('nama')->get();
-            
-            return view('dashboard.admin.pemilik.edit', compact('pemilik', 'users'));
+            return view('dashboard.admin.pemilik.edit', compact('pemilik'));
         } catch (\Throwable $e) {
-            return $this->redirectWithMessage('dashboard.admin.pemilik.index', 'Terjadi kesalahan memuat data.', 'danger');
+            return back()->with('danger', 'Error memuat data.');
         }
     }
 
-    /** Update data */
     public function update(Request $request, $id)
     {
-         $pemilik = Pemilik::findOrFail($id);
+        $pemilik = Pemilik::with('user')->findOrFail($id);
+        $user = $pemilik->user;
 
-        $validated = $request->validate([
-            // User (nama, email) di-update di UserController
-            // Di sini hanya update data profil pemilik
-            'no_wa' => 'required|string|max:20',
+        $request->validate([
+            'nama'   => 'required|string|max:255',
+            'email'  => ['required', 'email', Rule::unique('user', 'email')->ignore($user->iduser, 'iduser')],
+            'no_wa'  => 'required|string|max:20',
             'alamat' => 'required|string|max:255',
-            // Validasi 'iduser' unik, tapi abaikan 'idpemilik' saat ini
-            'iduser' => [
-                'required',
-                'exists:user,iduser',
-                Rule::unique('pemilik')->ignore($id, 'idpemilik')
-            ],
         ]);
 
+        DB::beginTransaction();
+
         try {
-            $pemilik->update($validated);
-            return $this->redirectWithMessage('dashboard.admin.pemilik.index', '✅ Data pemilik berhasil diperbarui.');
+            // Update User (Nama & Email)
+            $user->update([
+                'nama'  => $request->nama,
+                'email' => $request->email,
+            ]);
+
+            // Update Pemilik (Hanya WA & Alamat)
+            // HAPUS 'nama' & 'email' dari sini agar tidak error
+            $pemilik->update([
+                'no_wa'  => $request->no_wa,
+                'alamat' => $request->alamat,
+            ]);
+
+            DB::commit();
+            return $this->redirectWithMessage('dashboard.admin.pemilik.index', '✅ Data berhasil diperbarui.');
+
         } catch (\Throwable $e) {
-            Log::error("Error update pemilik: " . $e->getMessage());
-            return back()->withInput()->with('danger', 'Gagal memperbarui data.');
+            DB::rollBack();
+            return back()->withInput()->with('danger', 'Gagal update: ' . $e->getMessage());
         }
     }
 
-    /** Hapus data */
     public function destroy($id)
     {
         try {
-            // Gunakan Eloquent untuk mengecek relasi
             $pemilik = Pemilik::withCount('pets')->findOrFail($id);
-            
             if ($pemilik->pets_count > 0) {
-                return back()->with('danger', "Tidak bisa dihapus. Masih dipakai di $pemilik->pets_count data pet.");
+                return back()->with('danger', "Gagal! Pemilik ini masih memiliki hewan.");
             }
-
-            // Hapus HANYA profil pemilik. 
-            // User-nya dihapus terpisah melalui UserController.
             $pemilik->delete();
-            return back()->with('success', '🗑️ Data profil pemilik berhasil dihapus.');
-            
+            return back()->with('success', '🗑️ Profil pemilik berhasil dihapus.');
         } catch (\Throwable $e) {
-            Log::error("Error delete pemilik: " . $e->getMessage());
             return back()->with('danger', 'Gagal menghapus data.');
         }
     }

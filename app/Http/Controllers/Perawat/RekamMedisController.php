@@ -1,211 +1,186 @@
 <?php
 
-namespace App\Http\Controllers\Perawat;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Models\RekamMedis;
+use App\Models\TemuDokter;
+use App\Models\User;
 
 class RekamMedisController extends Controller
 {
-    // ✅ INDEX: daftar reservasi tanpa RM + RM yang sudah ada (dengan filter tanggal)
+    private function redirectMsg($route, $message, $type = 'success')
+    {
+        return redirect()->route($route)->with($type, $message);
+    }
+
+    /** 🔹 Index */
     public function index(Request $request)
     {
-        // Ambil tanggal dari query string, default = hari ini
-        $selectedDate = $request->input('tanggal', date('Y-m-d'));
+        try {
+            $query = RekamMedis::with(['temuDokter.pet.pemilik.user', 'dokter'])
+                ->orderBy('created_at', 'desc');
 
-        // 🔹 List Reservasi tanpa Rekam Medis
-        $reservasi = DB::table('temu_dokter as td')
-            ->join('pet as p', 'td.idpet', '=', 'p.idpet')
-            ->join('pemilik as pem', 'p.idpemilik', '=', 'pem.idpemilik')
-            ->leftJoin('rekam_medis as rm', 'rm.idreservasi_dokter', '=', 'td.idreservasi_dokter')
-            ->select(
-                'td.idreservasi_dokter',
-                'td.no_urut',
-                'td.waktu_daftar',
-                'p.idpet',
-                'p.nama as nama_pet',
-                'pem.nama as nama_pemilik'
-            )
-            ->whereNull('rm.idrekam_medis')
-            ->whereDate('td.waktu_daftar', $selectedDate)
-            ->orderBy('td.no_urut', 'asc')
-            ->get();
+            if ($request->has('filter') && $request->filter == 'today') {
+                $query->whereDate('created_at', now());
+            }
 
-        // 🔹 List Rekam Medis yang sudah ada pada tanggal itu
-        $rekamMedis = DB::table('rekam_medis as rm')
-            ->join('temu_dokter as td', 'rm.idreservasi_dokter', '=', 'td.idreservasi_dokter')
-            ->join('pet as p', 'p.idpet', '=', 'rm.idpet')
-            ->join('pemilik as pem', 'pem.idpemilik', '=', 'p.idpemilik')
-            ->select(
-                'rm.idrekam_medis',
-                'rm.created_at',
-                'rm.anamnesa',
-                'rm.diagnosa',
-                'td.idreservasi_dokter',
-                'p.nama as nama_pet',
-                'pem.nama as nama_pemilik'
-            )
-            ->whereDate('rm.created_at', $selectedDate)
-            ->orderBy('rm.created_at', 'desc')
-            ->get();
+            $data = $query->paginate(10);
 
-        return view('dashboard.perawat.rekam-medis.index', compact('reservasi', 'rekamMedis', 'selectedDate'));
+            return view('dashboard.admin.rekam-medis.index', compact('data'));
+
+        } catch (\Throwable $e) {
+            Log::error('Gagal load rekam medis: ' . $e->getMessage());
+            return back()->with('danger', 'Gagal memuat data rekam medis.');
+        }
     }
 
-    // ✅ CREATE (form buat RM baru)
+    /** 🔹 Form Tambah */
     public function create(Request $request)
     {
-        $idreservasi = $request->query('idreservasi');
-        $idpet = $request->query('idpet');
-
-        if (!$idreservasi || !$idpet) {
-            abort(400, 'Parameter idreservasi & idpet wajib diisi.');
+        $selectedReservasi = null;
+        if ($request->has('id_reservasi')) {
+            $selectedReservasi = TemuDokter::with('pet.pemilik.user')->find($request->id_reservasi);
         }
 
-        // 🔹 Ambil data reservasi & pet
-        $ctx = DB::table('temu_dokter as td')
-            ->join('pet as p', 'td.idpet', '=', 'p.idpet')
-            ->join('pemilik as pm', 'p.idpemilik', '=', 'pm.idpemilik')
-            ->select(
-                'td.idreservasi_dokter',
-                'td.no_urut',
-                'td.waktu_daftar',
-                'p.idpet',
-                'p.nama as nama_pet',
-                'pm.nama as nama_pemilik'
-            )
-            ->where('td.idreservasi_dokter', $idreservasi)
-            ->where('p.idpet', $idpet)
-            ->first();
+        $reservasiList = TemuDokter::with(['pet', 'dokter'])
+            ->whereIn('status', ['In-line', 'Pending'])
+            ->doesntHave('rekamMedis')
+            ->get();
 
-        if (!$ctx) {
-            abort(404, 'Reservasi atau Pet tidak ditemukan.');
+        // PERBAIKAN: Mengambil user dengan idrole = 2 (Dokter)
+        $dokter = User::whereHas('roles', fn($q) => $q->where('idrole', 2))->get();
+
+        return view('dashboard.admin.rekam-medis.create', compact('reservasiList', 'dokter', 'selectedReservasi'));
+    }
+
+    /** 🔹 Simpan Data (Store) */
+    public function store(Request $r)
+    {
+        $r->validate([
+            'idreservasi_dokter' => 'required|integer|exists:temu_dokter,idreservasi_dokter|unique:rekam_medis,idreservasi_dokter',
+            'dokter_pemeriksa' => [
+                'required',
+                'integer',
+                'exists:user,iduser',
+                // Validasi tambahan: User ID harus punya role dengan idrole 2
+                function ($attribute, $value, $fail) {
+                    $isDokter = User::where('iduser', $value)
+                        ->whereHas('roles', fn($q) => $q->where('idrole', 2))
+                        ->exists();
+                    if (!$isDokter) {
+                        $fail('User yang dipilih bukan dokter.');
+                    }
+                },
+            ],
+            'anamnesa' => 'nullable|string',
+            'temuan_klinis' => 'nullable|string',
+            'diagnosa' => 'required|string|max:255',
+            'terapi' => 'nullable|string|max:255',
+        ], [
+            'idreservasi_dokter.unique' => 'Reservasi ini sudah memiliki rekam medis.',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            RekamMedis::create([
+                'idreservasi_dokter' => $r->idreservasi_dokter,
+                'dokter_pemeriksa' => $r->dokter_pemeriksa,
+                'anamnesa' => $r->anamnesa,
+                'temuan_klinis' => $r->temuan_klinis,
+                'diagnosa' => $r->diagnosa,
+                'terapi' => $r->terapi,
+                'created_at' => now(),
+            ]);
+
+            TemuDokter::where('idreservasi_dokter', $r->idreservasi_dokter)
+                ->update(['status' => 'Selesai']);
+
+            DB::commit();
+
+            return $this->redirectMsg('dashboard.admin.rekam-medis.index', '✅ Rekam Medis berhasil ditambahkan.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Insert RekamMedis error: ' . $e->getMessage());
+            return back()->withInput()->with('danger', 'Gagal menyimpan data: ' . $e->getMessage());
         }
-
-        // 🔹 Daftar Dokter aktif
-        $listDokter = DB::table('user as u')
-            ->join('role_user as ru', 'ru.iduser', '=', 'u.iduser')
-            ->join('role as r', 'r.idrole', '=', 'ru.idrole')
-            ->where('ru.status', 1)
-            ->where('r.nama_role', 'Dokter')
-            ->orderBy('u.nama', 'asc')
-            ->select('u.iduser', 'u.nama')
-            ->get();
-
-        return view('dashboard.perawat.rekam-medis.create', compact('ctx', 'listDokter'));
     }
 
-    // ✅ STORE (simpan RM baru)
-    public function store(Request $request)
+    /** 🔹 Form Edit */
+    public function edit($id)
     {
-        $request->validate([
-            'idreservasi' => 'required|integer',
-            'idpet' => 'required|integer',
-            'iduser_dokter' => 'required|integer',
+        $rekamMedis = RekamMedis::with(['temuDokter.pet', 'dokter'])->findOrFail($id);
+        
+        // PERBAIKAN: Mengambil user dengan idrole = 2 (Dokter)
+        $dokter = User::whereHas('roles', fn($q) => $q->where('idrole', 2))->get();
+
+        return view('dashboard.admin.rekam-medis.edit', [
+            'item' => $rekamMedis,
+            'dokter' => $dokter,
+        ]);
+    }
+
+    /** 🔹 Update Data */
+    public function update(Request $r, $id)
+    {
+        $item = RekamMedis::findOrFail($id);
+
+        $r->validate([
+            'dokter_pemeriksa' => [
+                'required',
+                'integer',
+                'exists:user,iduser',
+                // Validasi tambahan role idrole 2
+                function ($attribute, $value, $fail) {
+                    $isDokter = User::where('iduser', $value)
+                        ->whereHas('roles', fn($q) => $q->where('idrole', 2))
+                        ->exists();
+                    if (!$isDokter) {
+                        $fail('User yang dipilih bukan dokter.');
+                    }
+                },
+            ],
+            'anamnesa' => 'nullable|string',
+            'temuan_klinis' => 'nullable|string',
+            'diagnosa' => 'required|string|max:255',
+            'terapi' => 'nullable|string|max:255',
         ]);
 
-        $data = [
-            'idreservasi_dokter' => $request->idreservasi,
-            'idpet' => $request->idpet,
-            'dokter_pemeriksa' => $request->iduser_dokter,
-            'anamnesa' => $request->anamnesa,
-            'temuan_klinis' => $request->temuan_klinis,
-            'diagnosa' => $request->diagnosa,
-            'created_at' => now(),
-        ];
-
-        $id = DB::table('rekam_medis')->insertGetId($data);
-
-        return redirect()->route('perawat.rekam-medis.show', $id)
-            ->with('success', 'Rekam medis berhasil dibuat.');
-    }
-
-    // ✅ SHOW (Detail RM + CRUD tindakan)
-    public function show($id)
-    {
-        $rekamMedis = DB::table('rekam_medis as rm')
-            ->join('pet as p', 'p.idpet', '=', 'rm.idpet')
-            ->join('pemilik as pem', 'pem.idpemilik', '=', 'p.idpemilik')
-            ->leftJoin('user as u', 'u.iduser', '=', 'rm.dokter_pemeriksa')
-            ->select('rm.*', 'p.nama as nama_pet', 'pem.nama as nama_pemilik', 'u.nama as nama_dokter')
-            ->where('rm.idrekam_medis', $id)
-            ->first();
-
-        if (!$rekamMedis) abort(404, 'Rekam Medis tidak ditemukan.');
-
-        $detailTindakan = DB::table('detail_rekam_medis as drm')
-            ->join('kode_tindakan_terapi as ktt', 'drm.idkode_tindakan_terapi', '=', 'ktt.idkode_tindakan_terapi')
-            ->join('kategori as k', 'k.idkategori', '=', 'ktt.idkategori')
-            ->join('kategori_klinis as kk', 'kk.idkategori_klinis', '=', 'ktt.idkategori_klinis')
-            ->select(
-                'drm.*',
-                'ktt.kode',
-                'ktt.deskripsi_tindakan_terapi',
-                'k.nama as nama_kategori',
-                'kk.nama_kategori_klinis'
-            )
-            ->where('drm.idrekam_medis', $id)
-            ->get();
-
-        $listKode = DB::table('kode_tindakan_terapi')
-            ->select('idkode_tindakan_terapi', 'kode', 'deskripsi_tindakan_terapi')
-            ->orderBy('kode', 'asc')
-            ->get();
-
-        return view('dashboard.perawat.rekam-medis.show', compact('rekamMedis', 'detailTindakan', 'listKode'));
-    }
-
-    // ✅ UPDATE HEADER RM
-    public function update(Request $request, $id)
-    {
-        DB::table('rekam_medis')
-            ->where('idrekam_medis', $id)
-            ->update([
-                'anamnesa' => $request->anamnesa,
-                'temuan_klinis' => $request->temuan_klinis,
-                'diagnosa' => $request->diagnosa,
+        try {
+            $item->update([
+                'dokter_pemeriksa' => $r->dokter_pemeriksa,
+                'anamnesa' => $r->anamnesa,
+                'temuan_klinis' => $r->temuan_klinis,
+                'diagnosa' => $r->diagnosa,
+                'terapi' => $r->terapi,
             ]);
 
-        return back()->with('success', 'Rekam medis berhasil diperbarui.');
+            return $this->redirectMsg('dashboard.admin.rekam-medis.index', '✅ Data Rekam Medis berhasil diperbarui.');
+        } catch (\Throwable $e) {
+            Log::error('Update RekamMedis error: ' . $e->getMessage());
+            return back()->withInput()->with('danger', 'Gagal memperbarui data.');
+        }
     }
 
-    // ✅ TAMBAH TINDAKAN
-    public function tambahTindakan(Request $request, $id)
+    /** 🔹 Hapus Data */
+    public function destroy($id)
     {
-        $request->validate([
-            'idkode_tindakan_terapi' => 'required|integer',
-        ]);
+        DB::beginTransaction();
+        try {
+            $rekamMedis = RekamMedis::with('detailRekamMedis')->findOrFail($id);
+            $rekamMedis->detailRekamMedis()->delete();
+            $rekamMedis->delete();
 
-        DB::table('detail_rekam_medis')->insert([
-            'idrekam_medis' => $id,
-            'idkode_tindakan_terapi' => $request->idkode_tindakan_terapi,
-            'detail' => $request->detail,
-        ]);
-
-        return back()->with('success', 'Tindakan berhasil ditambahkan.');
-    }
-
-    // ✅ UPDATE TINDAKAN
-    public function updateTindakan(Request $request, $iddetail)
-    {
-        DB::table('detail_rekam_medis')
-            ->where('iddetail_rekam_medis', $iddetail)
-            ->update([
-                'idkode_tindakan_terapi' => $request->idkode_tindakan_terapi,
-                'detail' => $request->detail,
-            ]);
-
-        return back()->with('success', 'Tindakan berhasil diperbarui.');
-    }
-
-    // ✅ HAPUS TINDAKAN
-    public function hapusTindakan($iddetail)
-    {
-        DB::table('detail_rekam_medis')
-            ->where('iddetail_rekam_medis', $iddetail)
-            ->delete();
-
-        return back()->with('success', 'Tindakan berhasil dihapus.');
+            DB::commit();
+            return back()->with('success', '🗑️ Data Rekam Medis berhasil dihapus.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Delete RekamMedis error: ' . $e->getMessage());
+            return back()->with('danger', 'Gagal menghapus data.');
+        }
     }
 }

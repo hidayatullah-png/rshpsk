@@ -1,350 +1,79 @@
-<!DOCTYPE html>
-<html lang="id">
+@extends('layouts.admin.admin')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Kode Tindakan Terapi</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        body {
-            margin: 0;
-            background-color: #f4f7f6;
-            padding-top: 110px;
-        }
+@section('title', 'Manajemen Kode Tindakan Terapi')
 
-        .main-container {
-            max-width: 1000px;
-            margin: 3rem auto;
-            padding: 2rem;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
+@section('content')
+<div class="main-container">
+    <h2>Manajemen Kode Tindakan Terapi</h2>
 
-        .main-container h2 {
-            font-size: 2.2rem;
-            color: #3ea2c7;
-            margin: 0.5rem auto;
-            padding: 0.5rem;
-            font-weight: 700;
-        }
+    {{-- Tombol Tambah --}}
+    <div class="action-header">
+        <a href="{{ route('dashboard.admin.kode-tindakan-terapi.create') }}" class="btn btn-success">
+            <i class="fas fa-plus-circle"></i> Tambah Tindakan
+        </a>
+    </div>
 
-        .action-header {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 1.2rem;
-        }
-
-        .btn {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            font-size: 0.9rem;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            white-space: nowrap;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .btn-success {
-            background-color: #28a745;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background-color: #218838;
-        }
-
-        .btn-primary {
-            background-color: #3ea2c7;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #2e8aa8;
-        }
-
-        .btn-danger {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background-color: #c82333;
-        }
-
-        /* --- Alert/Notification Styling --- */
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid transparent;
-            border-radius: 8px;
-            font-size: 1rem;
-            text-align: left;
-        }
-
-        .alert-success {
-            color: #155724;
-            background-color: #d4edda;
-            border-color: #c3e6cb;
-        }
-
-        .alert-danger {
-            color: #721c24;
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-        }
-
-        /* --- Table Styling --- */
-        .table-responsive {
-            overflow-x: auto;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-bottom: 1rem;
-            background-color: #fff;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .data-table th,
-        .data-table td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #e0e0e0;
-            vertical-align: middle;
-        }
-
-        .data-table th {
-            background-color: #3ea2c7;
-            color: white;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-        }
-
-        .data-table th:first-child,
-        .data-table td:first-child {
-            text-align: center;
-            width: 50px;
-        }
-
-        .data-table th:last-child,
-        .data-table td.action-buttons {
-            text-align: center;
-            width: 180px;
-        }
-
-        .action-buttons {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .action-buttons form {
-            margin: 0;
-            padding: 0;
-        }
-
-        .data-table th:first-child {
-            border-top-left-radius: 8px;
-        }
-
-        .data-table th:last-child {
-            border-top-right-radius: 8px;
-        }
-
-        .data-table tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        .data-table tbody tr:hover {
-            background-color: #eaf6fc;
-        }
-
-        .data-table td {
-            font-size: 0.95rem;
-            color: #555;
-        }
-
-        .empty-message {
-            font-size: 1.1rem;
-            color: #777;
-            margin-top: 2rem;
-            padding: 1.5rem;
-            background-color: #ffe0b2;
-            border: 1px solid #ffb726;
-            border-radius: 8px;
-        }
-
-        .empty-state-actions {
-            margin-top: 1.5rem;
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding-top: 150px;
-            }
-
-            .main-container {
-                margin: 2rem auto;
-                padding: 1rem;
-                max-width: 95%;
-            }
-
-            .main-container h2 {
-                font-size: 1.8rem;
-            }
-
-            .action-header {
-                justify-content: center;
-            }
-
-            .data-table {
-                min-width: 500px;
-            }
-
-            .data-table th,
-            .data-table td {
-                padding: 10px;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-                gap: 0.3rem;
-            }
-
-            .action-buttons .btn {
-                width: 100%;
-                box-sizing: border-box;
-            }
-
-            .data-table th:last-child,
-            .data-table td.action-buttons {
-                width: auto;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .main-container {
-                margin: 1rem auto;
-                padding: 0.8rem;
-            }
-
-            .main-container h2 {
-                font-size: 1.5rem;
-            }
-
-            .data-table {
-                min-width: 400px;
-            }
-
-            .btn {
-                font-size: 0.85rem;
-                padding: 6px 10px;
-            }
-        }
-    </style>
-</head>
-
-<body>
-    <x-navbar />
-
-    <div class="main-container">
-        <h2>Manajemen Kode Tindakan Terapi</h2>
-
-        @if (session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
-        @if (session('danger'))
-            <div class="alert alert-danger">
-                {{ session('danger') }}
-            </div>
-        @endif
-
-        <div class="action-header">
-            <a href="{{ route('dashboard.admin.kode-tindakan-terapi.create') }}" class="btn btn-success">
-                <i class="fas fa-plus-circle"></i> Tambah Tindakan
-            </a>
-        </div>
-
-        @if ($KodeTindakanTerapi->isNotEmpty())
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
+    {{-- Logic Table --}}
+    @if ($KodeTindakanTerapi->isNotEmpty())
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Kode</th> 
+                        <th>Deskripsi Tindakan</th>
+                        <th>Kategori</th>
+                        <th>Kategori Klinis</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($KodeTindakanTerapi as $tindakan)
                         <tr>
-                            <th>No.</th>
-                            <th>Deskripsi Tindakan</th>
-                            <th>Kategori</th>
-                            <th>Kategori Klinis</th>
-                            <th>Aksi</th>
+                            <td>{{ $loop->iteration }}</td>
+                            
+                            {{-- Menampilkan Kode --}}
+                            <td style="font-weight: 600; color: #3ea2c7;">{{ $tindakan->kode }}</td>
+
+                            <td>{{ $tindakan->deskripsi_tindakan_terapi }}</td>
+
+                            {{-- PERBAIKAN DI SINI: Panggil langsung nama alias kolomnya --}}
+                            <td>{{ $tindakan->nama_kategori ?? '-' }}</td>
+                            <td>{{ $tindakan->nama_kategori_klinis ?? '-' }}</td>
+
+                            <td class="action-buttons">
+                                {{-- Tombol Edit --}}
+                                <a href="{{ route('dashboard.admin.kode-tindakan-terapi.edit', $tindakan->idkode_tindakan_terapi) }}"
+                                   class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+
+                                {{-- Tombol Hapus --}}
+                                <form action="{{ route('dashboard.admin.kode-tindakan-terapi.destroy', $tindakan->idkode_tindakan_terapi) }}"
+                                      method="POST">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger"
+                                            onclick="return confirm('Apakah Anda yakin ingin menghapus tindakan ini ({{ $tindakan->kode }} - {{ $tindakan->deskripsi_tindakan_terapi }})?')">
+                                        <i class="fas fa-trash-alt"></i> Hapus
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($KodeTindakanTerapi as $tindakan)
-                            <tr>
-                                <td>{{ $loop->iteration }}</td>
-
-                                {{-- Kolom ini sudah benar 'deskripsi_tindakan_terapi' --}}
-                                <td>{{ $tindakan->deskripsi_tindakan_terapi }}</td>
-
-                                {{-- Menampilkan nama dari relasi --}}
-                                <td>{{ $tindakan->kategori->nama_kategori ?? 'N/A' }}</td>
-                                <td>{{ $tindakan->kategoriKlinis->nama_kategori_klinis ?? 'N/A' }}</td>
-
-                                <td class="action-buttons">
-                                    {{-- Variabel '$tindakan' sudah benar --}}
-                                    <a href="{{ route('dashboard.admin.kode-tindakan-terapi.edit', $tindakan->idkode_tindakan_terapi) }}"
-                                        class="btn btn-primary">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </a>
-
-                                    <form
-                                        action="{{ route('dashboard.admin.kode-tindakan-terapi.destroy', $tindakan->idkode_tindakan_terapi) }}"
-                                        method="POST">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-danger"
-                                            onclick="return confirm('Apakah Anda yakin ingin menghapus tindakan ini ({{ $tindakan->deskripsi_tindakan_terapi }})?')">
-                                            <i class="fas fa-trash-alt"></i> Hapus
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @else
-            <p class="empty-message">Tidak ada data kode tindakan terapi yang tersedia. Silakan tambahkan yang pertama!
-            </p>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @else
+        {{-- Empty State --}}
+        <div class="empty-message">
+            <p>Tidak ada data kode tindakan terapi yang tersedia.</p>
             <div class="empty-state-actions">
-                <a href="{{ route('admin.kode_tindakan_terapi.create') }}" class="btn btn-success">
-                    <i class="fas fa-plus-circle"></i> Tambah Kode Tindakan Terapi Pertama
+                <a href="{{ route('dashboard.admin.kode-tindakan-terapi.create') }}" class="btn btn-success">
+                    <i class="fas fa-plus-circle"></i> Tambah Data Pertama
                 </a>
             </div>
-        @endif
-
-    </div>
-</body>
-
-</html>
+        </div>
+    @endif
+</div>
+@endsection

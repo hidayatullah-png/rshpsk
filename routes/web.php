@@ -74,6 +74,7 @@ Route::middleware(['auth', 'isAdministrator'])
 
         // Data Pemilik & Pet
         Route::resource('pemilik', AdminPemilikController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::get('api/get-ras/{idJenis}', [AdminPetController::class, 'getRasByJenis'])->name('api.get-ras');
         Route::resource('pet', AdminPetController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 
         // Role & User
@@ -99,11 +100,17 @@ Route::middleware(['auth', 'isResepsionis'])
     ->group(function () {
 
         // Dashboard
-        Route::get('/dashboard', [ResepsionisDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [ResepsionisDashboardController::class, 'index'])->name('dashboard-resepsionis');
 
-        // Registrasi Pemilik & Pet
+        // Registrasi Pemilik
         Route::resource('registrasi-pemilik', ResepsionisPemilikController::class)->only(['create', 'store']);
-        Route::resource('registrasi-pet', ResepsionisPetController::class)->only(['create', 'store']);
+
+        // 🔹 TAMBAHAN: Route API untuk Dropdown Ras (Agar AJAX di Form Create Berfungsi)
+        Route::get('api/get-ras/{idJenis}', [ResepsionisPetController::class, 'getRasByJenis'])->name('api.get-ras');
+
+        // Registrasi Pet
+        // Saya tambahkan 'index' karena tombol "Kembali" di form mengarah ke route index
+        Route::resource('registrasi-pet', ResepsionisPetController::class)->only(['index', 'create', 'store']);
 
         // Temu Dokter
         Route::resource('temu-dokter', ResepsionisTemuDokterController::class)->except(['show', 'edit']);

@@ -18,6 +18,81 @@
             padding-top: 110px;
         }
 
+        /* --- FLASH MESSAGE (Centered) --- */
+        .alert-container {
+            position: fixed;
+            top: 120px;
+            /* Adjust this if you want it lower/higher */
+            left: 50%;
+            /* Move to middle of screen horizontally */
+            transform: translateX(-50%);
+            /* Center align exactly */
+            z-index: 9999;
+            width: auto;
+            min-width: 300px;
+            max-width: 600px;
+            /* Increased max-width slightly for center look */
+            text-align: center;
+            /* Center text inside */
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Center icon and text */
+            gap: 12px;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            /* Changed animation to slide from top */
+            animation: slideInDown 0.5s ease-out forwards;
+        }
+
+        /* SUCCESS: Light Green Background */
+        .alert-success {
+            color: #0f5132;
+            background-color: #d1e7dd;
+            border-color: #badbcc;
+        }
+
+        /* ERROR: Light Red Background */
+        .alert-danger {
+            color: #842029;
+            background-color: #f8d7da;
+            border-color: #f5c2c7;
+        }
+
+        .alert i {
+            font-size: 1.1rem;
+        }
+
+        /* New Animation: Slide Down and Fade In */
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+
+        /* ----------------------------------- */
+
+        /* Styles Global */
         .main-container {
             max-width: 1000px;
             margin: 3rem auto;
@@ -178,6 +253,51 @@
         .empty-state-actions {
             margin-top: 1.5rem;
         }
+
+        .form-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3ea2c7;
+            box-shadow: 0 0 0 3px rgba(62, 162, 199, 0.2);
+        }
+
+        /* Kelas khusus untuk container form agar lebih kecil dari tabel */
+        .main-container.container-sm {
+            max-width: 600px;
+            text-align: left;
+            /* Override text-center dari main-container utama */
+        }
+
+        @media (max-width: 768px) {
+            .data-table {
+                min-width: 600px;
+            }
+
+            /* Agar tabel bisa discroll ke samping di HP */
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .action-buttons .btn {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
     </style>
 </head>
 
@@ -186,9 +306,37 @@
     {{-- NAVBAR --}}
     <x-navbar />
 
+    {{-- FLASH MESSAGES (CENTERED) --}}
+    <div class="alert-container">
+        @if(session('success'))
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <span>{{ session('success') }}</span>
+            </div>
+        @endif
+
+        {{-- Menangani session 'error' ATAU 'danger' --}}
+        @if(session('error') || session('danger'))
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>{{ session('error') ?? session('danger') }}</span>
+            </div>
+        @endif
+    </div>
+
     {{-- CONTENT --}}
     @yield('content')
 
+    {{-- Script: Remove alert after 4 seconds --}}
+    <script>
+        setTimeout(function () {
+            let alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function (alert) {
+                alert.style.animation = "fadeOut 0.5s forwards";
+                setTimeout(function () { alert.remove(); }, 500);
+            });
+        }, 4000); 
+    </script>
 </body>
 
 </html>

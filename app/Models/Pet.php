@@ -19,27 +19,37 @@ class Pet extends Model
         'idras_hewan'
     ];
 
-    // Pemilik
+    // ✅ Relasi ke Pemilik
     public function pemilik()
     {
-        // --- PERBAIKAN ---
-        // Relasi Pet adalah ke model Pemilik, bukan User.
-        // Kunci asing di tabel 'pet' adalah 'idpemilik'.
-        // Kunci utama di tabel 'pemilik' adalah 'idpemilik'.
         return $this->belongsTo(Pemilik::class, 'idpemilik', 'idpemilik');
     }
 
-    // Ras
+    // ✅ Relasi ke Ras
     public function ras()
     {
-        // Model RasHewan.php akan dibutuhkan nanti
         return $this->belongsTo(RasHewan::class, 'idras_hewan', 'idras_hewan');
     }
 
-    // Rekam Medis
+    // ✅ Relasi ke Rekam Medis (SOLUSI ERROR SQL)
+    // Menggunakan hasManyThrough karena tabel rekam_medis tidak punya kolom idpet
+    // Pet -> TemuDokter -> RekamMedis
     public function rekamMedis()
     {
-        // Model RekamMedis.php akan dibutuhkan nanti
-        return $this->hasMany(RekamMedis::class, 'idpet', 'idpet');
+        return $this->hasManyThrough(
+            RekamMedis::class,      
+            TemuDokter::class,     
+            'idpet',                
+            'idreservasi_dokter',   
+            'idpet',                
+            'idreservasi_dokter'    
+        );
+    }
+
+    // ✅ Relasi ke Temu Dokter (SOLUSI ERROR HAPUS)
+    // Digunakan untuk pengecekan withCount('temuDokter') di Controller
+    public function temuDokter()
+    {
+        return $this->hasMany(TemuDokter::class, 'idpet', 'idpet');
     }
 }

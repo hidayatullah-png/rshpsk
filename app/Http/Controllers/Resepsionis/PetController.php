@@ -3,55 +3,72 @@
 namespace App\Http\Controllers\Resepsionis;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Models\Pet;
+use App\Models\Pemilik;
+use App\Models\RasHewan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PetController extends Controller
 {
-    /** 🔹 Form Tambah Pet */
-    public function create(Request $request)
+    /** Helper pesan redirect */
+    private function redirectMsg($route, $msg, $type = 'success')
     {
-        $jenisList = DB::table('jenis_hewan')
-            ->select('idjenis_hewan', 'nama_jenis_hewan')
-            ->orderBy('nama_jenis_hewan')
-            ->get();
+        return redirect()->route($route)->with($type, $msg);
+    }
 
-        $rasList = DB::table('ras_hewan')
-            ->select('idras_hewan', 'nama_ras')
+    /** 🔹 API: Ambil Ras (Sama seperti Admin) */
+    public function getRasByJenis($idJenis)
+    {
+        $ras = RasHewan::where('idjenis_hewan', $idJenis)
             ->orderBy('nama_ras')
             ->get();
+        return response()->json($ras);
+    }
 
-        $pemilikList = DB::table('pemilik')
-            ->join('user', 'pemilik.iduser', '=', 'user.iduser')->select('pemilik.idpemilik', 'user.nama')
-            ->orderBy('nama')
-            ->get();
+    /** 🔹 Form Tambah Pet (Resepsionis) */
+    public function create()
+    {
+        try {
+            // Ambil Pemilik
+            $pemilikList = Pemilik::with('user')
+                ->join('user', 'pemilik.iduser', '=', 'user.iduser')
+                ->orderBy('user.nama')
+                ->select('pemilik.*')
+                ->get();
 
-        return view('dashboard.resepsionis.registrasi-pet.create', compact('jenisList', 'rasList', 'pemilikList'));
+            // Ambil Jenis Hewan
+            $jenisList = DB::table('jenis_hewan')->orderBy('nama_jenis_hewan')->get();
+
+            // Arahkan ke View khusus Resepsionis
+            return view('dashboard.resepsionis.registrasi-pet.create', compact('pemilikList', 'jenisList'));
+        } catch (\Throwable $e) {
+            Log::error('Gagal form tambah pet resepsionis: ' . $e->getMessage());
+            return back()->with('danger', 'Gagal memuat form.');
+        }
     }
 
     /** 🔹 Simpan Pet Baru */
-    public function store(Request $request)
+    public function store(Request $r)
     {
-        $request->validate([
-            'nama' => 'required|string|max:100',
+        $r->validate([
+            'nama'          => 'required|string|max:100',
             'tanggal_lahir' => 'nullable|date',
-            'warna_tanda' => 'nullable|string|max:100',
-            'jenis_kelamin' => 'required|in:M,F',
-            'idpemilik' => 'required|integer|exists:pemilik,idpemilik',
-            'idras_hewan' => 'required|integer|exists:ras_hewan,idras_hewan',
+            'warna_tanda'   => 'nullable|string|max:255',
+            'jenis_kelamin' => 'required|in:Jantan,Betina',
+            'idpemilik'     => 'required|exists:pemilik,idpemilik',
+            'idras_hewan'   => 'required|exists:ras_hewan,idras_hewan',
         ]);
 
-        DB::transaction(function () use ($request) {
-            DB::table('pet')->insert([
-                'nama' => $request->nama,
-                'tanggal_lahir' => $request->tanggal_lahir,
-                'warna_tanda' => $request->warna_tanda,
-                'jenis_kelamin' => $request->jenis_kelamin,
-                'idpemilik' => $request->idpemilik,
-                'idras_hewan' => $request->idras_hewan,
-            ]);
-        });
+        try {
+            Pet::create($r->all());
 
-        return back()->with('success', '🐾 Pet baru berhasil didaftarkan.');
+            return $this->redirectMsg('dashboard.resepsionis.registrasi-pet.create', '🐶 Data Pet berhasil didaftarkan!');
+
+        } catch (\Throwable $e) {
+            Log::error('Insert pet resepsionis error: ' . $e->getMessage());
+            return back()->withInput()->with('danger', 'Gagal menyimpan data.');
+        }
     }
 }

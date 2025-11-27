@@ -234,16 +234,16 @@
                     Data Master
                 </a>
                 <div class="dropdown-menu">
-                    <a href="{{ url('dashboard/admin/role-user') }}">Data User</a>
+                    <a href="{{ url('dashboard/admin/role-user') }}">Manajemen User</a>
                     <a href="{{ url('dashboard/admin/role') }}">Manajemen Role</a>
-                    <a href="{{ url('dashboard/admin/pemilik') }}">Data Pemilik</a>
-                    <a href="{{ url('dashboard/admin/pet') }}">Data Pet</a>
                     <a href="{{ url('dashboard/admin/jenis-hewan') }}">Jenis Hewan</a>
                     <a href="{{ url('dashboard/admin/ras-hewan') }}">Ras Hewan</a>
                     <a href="{{ url('dashboard/admin/kategori') }}">Data Kategori</a>
                     <a href="{{ url('dashboard/admin/kategori-klinis') }}">Data Kategori Klinis</a>
                     <a href="{{ url('dashboard/admin/kode-tindakan-terapi') }}">Data Kode Tindakan Terapi</a>
                     <a href="{{ url('dashboard/admin/rekam-medis') }}">Rekam Medis</a>
+                    <a href="{{ url('dashboard/admin/pemilik') }}">Data Pemilik</a>
+                    <a href="{{ url('dashboard/admin/pet') }}">Data Pet</a>
                 </div>
             </div>
 

@@ -8,9 +8,6 @@ use Illuminate\Support\Facades\DB;
 
 class KategoriController extends Controller
 {
-    /**
-     * Tampilkan daftar kategori
-     */
     public function index()
     {
         $kategori = DB::table('kategori')
@@ -21,17 +18,11 @@ class KategoriController extends Controller
         return view('dashboard.admin.kategori.index', compact('kategori'));
     }
 
-    /**
-     * Form tambah kategori
-     */
     public function create()
     {
         return view('dashboard.admin.kategori.create');
     }
 
-    /**
-     * Simpan data kategori baru
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -47,25 +38,19 @@ class KategoriController extends Controller
             ->with('success', '✅ Kategori berhasil ditambahkan!');
     }
 
-    /**
-     * Form edit kategori
-     */
     public function edit($id)
     {
         $kategori = DB::table('kategori')->where('idkategori', $id)->first();
 
         if (!$kategori) {
             return redirect()
-                ->route('admin.kategori.index')
+                ->route('dashboard.admin.kategori.index')
                 ->with('danger', '❌ Data kategori tidak ditemukan.');
         }
 
         return view('dashboard.admin.kategori.edit', compact('kategori'));
     }
 
-    /**
-     * Update data kategori
-     */
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -76,23 +61,21 @@ class KategoriController extends Controller
             'nama_kategori' => $request->nama_kategori,
         ]);
 
-        return redirect()->route('admin.kategori.index')
+        return redirect()
+            ->route('dashboard.admin.kategori.index')
             ->with('success', '✏️ Kategori berhasil diperbarui!');
     }
 
-    /**
-     * Hapus kategori
-     */
     public function destroy($id)
     {
         try {
             DB::table('kategori')->where('idkategori', $id)->delete();
             return redirect()
-                ->route('admin.kategori.index')
+                ->route('dashboard.admin.kategori.index')
                 ->with('success', '🗑️ Kategori berhasil dihapus!');
         } catch (\Throwable $e) {
             return redirect()
-                ->route('admin.kategori.index')
+                ->route('dashboard.admin.kategori.index')
                 ->with('danger', '⚠️ Gagal menghapus kategori.');
         }
     }

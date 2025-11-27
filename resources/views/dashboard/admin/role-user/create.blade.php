@@ -1,167 +1,157 @@
-<!DOCTYPE html>
-<html lang="id">
+@extends('layouts.admin.admin')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambah User & Role</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+@section('title', 'Tambah User & Role')
+
+@section('content')
+    <x-admin-form 
+        title="Tambah User & Role"
+        :action="route('dashboard.admin.role-user.store')"
+        :back-route="route('dashboard.admin.role-user.index')"
+    >
+        {{-- === BAGIAN 1: AKUN LOGIN === --}}
+        <div class="form-section-title">
+            <i class="fas fa-user-lock"></i> Informasi Akun
+        </div>
+
+        <div class="form-group">
+            <label for="nama">Nama User</label>
+            <input type="text" id="nama" name="nama" class="form-control @error('nama') is-invalid @enderror" 
+                   value="{{ old('nama') }}" placeholder="Masukkan nama user" required autofocus>
+            @error('nama') <span class="error-message">{{ $message }}</span> @enderror
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email User</label>
+            <input type="email" id="email" name="email" class="form-control @error('email') is-invalid @enderror" 
+                   value="{{ old('email') }}" placeholder="Masukkan email user" required>
+            @error('email') <span class="error-message">{{ $message }}</span> @enderror
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" class="form-control @error('password') is-invalid @enderror" 
+                   placeholder="Minimal 6 karakter" required>
+            @error('password') <span class="error-message">{{ $message }}</span> @enderror
+        </div>
+
+        <div class="form-group">
+            <label for="idrole">Pilih Role <span style="color:red">*</span></label>
+            {{-- Tambahkan ID 'roleSelect' untuk ditangkap JS --}}
+            <select id="roleSelect" name="idrole" class="form-control @error('idrole') is-invalid @enderror" required>
+                <option value="" disabled selected>-- Pilih Role --</option>
+                @foreach ($roles as $role)
+                    <option value="{{ $role->idrole }}" 
+                            data-role-name="{{ strtolower($role->nama_role) }}" 
+                            {{ old('idrole') == $role->idrole ? 'selected' : '' }}>
+                        {{ $role->nama_role }}
+                    </option>
+                @endforeach
+            </select>
+            @error('idrole') <span class="error-message">{{ $message }}</span> @enderror
+        </div>
+
+        {{-- === BAGIAN 2: FORM DINAMIS (DOKTER/PERAWAT) === --}}
+        {{-- Container ini default-nya hidden (display: none) --}}
+        <div id="extraFields" style="display: none;">
+            
+            <hr style="border: 0; border-top: 1px dashed #ddd; margin: 2rem 0;">
+            
+            <div class="form-section-title">
+                <i class="fas fa-id-card-alt"></i> Data Lengkap <span id="roleLabel"></span>
+            </div>
+
+            {{-- Field Umum (Alamat, No HP, Gender) --}}
+            <div class="form-group">
+                <label for="jenis_kelamin">Jenis Kelamin</label>
+                <select name="jenis_kelamin" id="jenis_kelamin" class="form-control">
+                    <option value="" disabled selected>-- Pilih Gender --</option>
+                    <option value="L" {{ old('jenis_kelamin') == 'L' ? 'selected' : '' }}>Laki-laki</option>
+                    <option value="P" {{ old('jenis_kelamin') == 'P' ? 'selected' : '' }}>Perempuan</option>
+                </select>
+                @error('jenis_kelamin') <span class="error-message">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="no_hp">Nomor HP</label>
+                <input type="text" name="no_hp" id="no_hp" class="form-control" 
+                       value="{{ old('no_hp') }}" placeholder="Contoh: 08123456789">
+                @error('no_hp') <span class="error-message">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="alamat">Alamat</label>
+                <textarea name="alamat" id="alamat" class="form-control" rows="2" 
+                          placeholder="Alamat lengkap">{{ old('alamat') }}</textarea>
+                @error('alamat') <span class="error-message">{{ $message }}</span> @enderror
+            </div>
+
+            {{-- Field Khusus Dokter --}}
+            <div id="fieldDokter" style="display: none;">
+                <div class="form-group">
+                    <label for="bidang_dokter">Bidang Dokter</label>
+                    <input type="text" name="bidang_dokter" class="form-control" 
+                           value="{{ old('bidang_dokter') }}" placeholder="Contoh: Umum, Gigi, Bedah">
+                    @error('bidang_dokter') <span class="error-message">{{ $message }}</span> @enderror
+                </div>
+            </div>
+
+            {{-- Field Khusus Perawat --}}
+            <div id="fieldPerawat" style="display: none;">
+                <div class="form-group">
+                    <label for="pendidikan">Pendidikan Terakhir</label>
+                    <input type="text" name="pendidikan" class="form-control" 
+                           value="{{ old('pendidikan') }}" placeholder="Contoh: D3 Keperawatan, S1 Ners">
+                    @error('pendidikan') <span class="error-message">{{ $message }}</span> @enderror
+                </div>
+            </div>
+        </div>
+
+    </x-admin-form>
+
     <style>
-        body {
-            background-color: #f4f7f6;
-            margin: 0;
-            padding-top: 110px;
-        }
-
-        .main-container {
-            max-width: 550px;
-            margin: 3rem auto;
-            padding: 2rem;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        h2 {
-            text-align: center;
-            color: #3ea2c7;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-        }
-
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        label {
-            font-weight: 600;
-            color: #444;
-            text-align: left;
-            margin-bottom: 0.3rem;
-        }
-
-        input[type="text"],
-        input[type="email"],
-        select {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 1rem;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .form-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.75rem;
-            margin-top: 1rem;
-        }
-
-        .btn {
-            padding: 10px 18px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-            font-size: 0.95rem;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .btn-primary {
-            background-color: #3ea2c7;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #2e8aa8;
-        }
-
-        .btn-secondary {
-            background-color: #f1f1f1;
-            color: #555;
-            border: 1px solid #ddd;
-        }
-
-        .btn-secondary:hover {
-            background-color: #e9e9e9;
-            border-color: #ccc;
+        .form-section-title {
+            font-size: 1.1rem; font-weight: 600; color: #3ea2c7;
+            margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
         }
     </style>
-</head>
 
-<body>
-    <x-navbar />
+    {{-- Javascript untuk Show/Hide Form --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const roleSelect = document.getElementById('roleSelect');
+            const extraFields = document.getElementById('extraFields');
+            const fieldDokter = document.getElementById('fieldDokter');
+            const fieldPerawat = document.getElementById('fieldPerawat');
+            const roleLabel = document.getElementById('roleLabel');
 
-    <div class="main-container">
-        <h2>Tambah User Baru</h2>
+            // Fungsi untuk cek role
+            function checkRole() {
+                // Ambil text dari option yang dipilih (bukan value ID-nya)
+                // dan ubah ke lowercase agar pencarian string lebih mudah
+                const selectedOption = roleSelect.options[roleSelect.selectedIndex];
+                const roleName = selectedOption.getAttribute('data-role-name') || '';
 
-        {{-- Pesan Error --}}
-        @if ($errors->any())
-            <div class="alert alert-danger">
-                <strong>Terjadi kesalahan:</strong>
-                <ul>
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
+                // Reset tampilan
+                extraFields.style.display = 'none';
+                fieldDokter.style.display = 'none';
+                fieldPerawat.style.display = 'none';
 
-        {{-- Pesan Sukses --}}
-        @if (session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
+                if (roleName.includes('dokter')) {
+                    extraFields.style.display = 'block';
+                    fieldDokter.style.display = 'block';
+                    roleLabel.innerText = 'Dokter';
+                } else if (roleName.includes('perawat')) {
+                    extraFields.style.display = 'block';
+                    fieldPerawat.style.display = 'block';
+                    roleLabel.innerText = 'Perawat';
+                }
+            }
 
-        <form action="{{ route('dashboard.admin.role-user.store') }}" method="POST">
-            @csrf
+            // Jalankan saat dropdown berubah
+            roleSelect.addEventListener('change', checkRole);
 
-            <div>
-                <label for="nama">Nama User</label>
-                <input type="text" name="nama" id="nama" placeholder="Masukkan nama user" required>
-            </div>
-
-            <div>
-                <label for="email">Email User</label>
-                <input type="email" name="email" id="email" placeholder="Masukkan email user" required>
-            </div>
-
-            <div>
-                <label for="idrole">Pilih Role</label>
-                <select name="idrole" id="idrole" required>
-                    <option value="">-- Pilih Role --</option>
-                    @foreach ($roles as $role)
-                        <option value="{{ $role->idrole }}">{{ $role->nama_role }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Simpan
-                </button>
-                <a href="{{ route('dashboard.admin.role-user.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Kembali
-                </a>
-            </div>
-        </form>
-    </div>
-
-</body>
-
-</html>
+            // Jalankan saat halaman dimuat (untuk menghandle old input saat validasi gagal)
+            checkRole();
+        });
+    </script>
+@endsection
