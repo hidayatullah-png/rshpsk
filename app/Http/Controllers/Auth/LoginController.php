@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
-use App\Models\Role;
+// use App\Models\Role; // Hapus jika tidak dipakai langsung
 
 class LoginController extends Controller
 {
@@ -32,10 +32,6 @@ class LoginController extends Controller
             'email' => 'required|email',
             'password' => 'required|min:6',
         ]);
-
-        // if ($validator->fails()) {
-        // return back()->withErrors($validator)->withInput();
-        // }
 
         // ✅ 2. Ambil user
         $user = User::with(['roleUsers.role'])
@@ -63,10 +59,10 @@ class LoginController extends Controller
         // ✅ 5. Login user
         Auth::login($user);
 
-        // ✅ 6. Simpan ke session
+        // ✅ 6. Simpan ke session (Opsional jika Anda memakainya di view/middleware)
         $request->session()->put([
             'user_id' => $user->iduser,
-            'user_name' => $user->nama,
+            'user_name' => $user->nama, // Pastikan kolom di DB adalah 'nama' atau 'name'
             'user_email' => $user->email,
             'user_role' => $activeRole->idrole ?? null,
             'user_role_name' => $activeRole->nama_role ?? 'Not found',
@@ -77,21 +73,26 @@ class LoginController extends Controller
 
         // ✅ 7. Arahkan sesuai role ID
         switch ($roleId) {
-            case '1':
+            case '1': // Administrator
                 return redirect()->route('dashboard.admin.dashboard-admin')
-                    ->with('success', 'Login berhasil!');
-            case '2':
-                return redirect()->route('dashboard.dokter.dashboard-dokter')
-                    ->with('success', 'Login berhasil!');
-            case '3':
-                return redirect()->route('dashboard.perawat.dashboard-perawat')
-                    ->with('success', 'Login berhasil!');
-            case '4':
+                    ->with('success', 'Login berhasil! Selamat datang Admin.');
+            
+            case '2': // Dokter
+                // Pastikan route dashboard dokter sudah ada di web.php
+                return redirect()->route('dashboard.dokter.rekam-medis.index')
+                    ->with('success', 'Login berhasil! Selamat datang Dokter.');
+            
+            case '3': // Perawat
+                return redirect()->route('dashboard.perawat.rekam-medis.index')
+                    ->with('success', 'Login berhasil! Selamat bekerja.');
+            
+            case '4': // Resepsionis
                 return redirect()->route('dashboard.resepsionis.dashboard-resepsionis')
-                    ->with('success', 'Login berhasil!');
+                    ->with('success', 'Login berhasil! Selamat datang Resepsionis.');
+            
             default:
                 Auth::logout();
-                return redirect()->route('login')->with('error', 'Role tidak dikenali.');
+                return redirect()->route('login')->with('error', 'Role tidak dikenali atau Anda tidak memiliki akses.');
         }
 
     }

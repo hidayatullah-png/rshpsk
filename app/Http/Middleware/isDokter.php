@@ -3,34 +3,34 @@
 namespace App\Http\Middleware;
 
 use Closure;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class IsDokter
 {
-    /**
-     * Middleware ini memastikan hanya user dengan role_id = 2 (Dokter)
-     * yang bisa mengakses route tertentu.
-     */
-    public function handle(Request $request, Closure $next)
+    public function handle($request, Closure $next)
     {
-        // ✅ 1. Jika user belum login → arahkan ke halaman login
         if (!Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        // ✅ 2. Ambil role user dari session (diset saat login)
-        $userRole = session('user_role');
+        $user = Auth::user();
 
-        // ✅ 3. Cek apakah role ID sesuai dengan Dokter (2)
-        if ((int) $userRole === 2) {
-            // Jika iya → izinkan lanjut ke halaman berikutnya
-            return $next($request);
+        $role = DB::table('role_user')
+            ->join('role', 'role_user.idrole', '=', 'role.idrole')
+            ->where('role_user.iduser', $user->iduser)
+            ->where('role_user.status', 1)
+            ->value('role.nama_role');
+
+        if (!$role) {
+            abort(403, 'Akses ditolak. Role tidak ditemukan.');
         }
 
-        // ✅ 4. Jika bukan Dokter → tolak akses dan arahkan ke dashboard utama
-        return redirect()->route('dashboard.admin.dashboard-admin')
-            ->with('error', 'Akses ditolak. Halaman ini hanya untuk Dokter.');
+        if (strtolower($role) !== 'dokter') {
+            abort(403, 'Akses ditolak. Anda bukan Dokter.');
+        }
+
+        return $next($request);
     }
 }

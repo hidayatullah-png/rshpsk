@@ -3,33 +3,42 @@
 namespace App\Http\Middleware;
 
 use Closure;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class IsPerawat
 {
     /**
-     * Middleware ini memastikan hanya user dengan role_id = 3 (Perawat)
-     * yang bisa mengakses route tertentu.
+     * Handle an incoming request.
      */
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next): Response
     {
-        // ✅ 1. Cek apakah user sudah login
         if (!Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        // ✅ 2. Ambil role user dari session (diset saat login)
-        $userRole = session('user_role');
+        $user = Auth::user();
 
-        // ✅ 3. Jika role ID sesuai dengan Perawat (3), izinkan lanjut
-        if ((int) $userRole === 3) {
-            return $next($request);
+        // Mengambil nama role dari tabel role_user -> role
+        // Pastikan nama tabel dan kolom sesuai database Anda
+        $role = DB::table('role_user')
+            ->join('role', 'role_user.idrole', '=', 'role.idrole')
+            ->where('role_user.iduser', $user->iduser)
+            ->where('role_user.status', 1)
+            ->value('role.nama_role');
+
+        if (!$role) {
+            abort(403, 'Akses ditolak. Role tidak ditemukan.');
         }
 
-        // ✅ 4. Jika bukan Perawat → tolak akses dengan redirect aman
-        return redirect()->route('dashboard.admin.dashboard-admin')
-            ->with('error', 'Akses ditolak. Halaman ini hanya untuk Perawat.');
+        // Cek apakah role adalah perawat
+        if (strtolower($role) !== 'perawat') {
+            abort(403, 'Akses ditolak. Anda bukan Perawat.');
+        }
+
+        return $next($request);
     }
 }

@@ -15,14 +15,19 @@ class ProfilController extends Controller
     {
         $user = Auth::user();
 
+        // Query menyesuaikan dengan struktur tabel 'perawat' yang kamu berikan
         $profil = DB::table('user as u')
-            ->leftJoin('perawat as p', 'p.id_user', '=', 'u.iduser') // foreign key benar
+            // Join ke tabel perawat menggunakan 'iduser' (sesuai schema database)
+            ->leftJoin('perawat as p', 'p.iduser', '=', 'u.iduser') 
+            
             ->join('role_user as ru', 'ru.iduser', '=', 'u.iduser')
             ->join('role as r', 'r.idrole', '=', 'ru.idrole')
             ->select(
                 'u.nama as nama_user',
                 'u.email',
                 'r.nama_role',
+                
+                // Kolom dari tabel perawat
                 'p.no_hp',
                 'p.jenis_kelamin',
                 'p.pendidikan',
@@ -31,10 +36,10 @@ class ProfilController extends Controller
             ->where('u.iduser', $user->iduser)
             ->first();
 
-        // fallback jika belum ada data perawat
+        // Fallback jika data detail perawat belum diisi di database
         if (!$profil) {
             $profil = (object) [
-                'nama_user' => $user->nama ?? '-',
+                'nama_user' => $user->nama ?? 'User',
                 'email' => $user->email ?? '-',
                 'nama_role' => 'Perawat',
                 'no_hp' => '-',

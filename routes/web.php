@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 // ===== Global Controllers =====
 use App\Http\Controllers\AuthController;
@@ -15,7 +16,7 @@ use App\Http\Controllers\Admin\{
     KategoriController,
     KategoriKlinisController,
     KodeTindakanTerapiController,
-    RekamMedisController,
+    RekamMedisController as AdminRekamMedisController,
     PetController as AdminPetController,
     PemilikController as AdminPemilikController,
     RoleController,
@@ -31,7 +32,19 @@ use App\Http\Controllers\Resepsionis\{
     TemuDokterController as ResepsionisTemuDokterController
 };
 
+// ===== Perawat Controllers =====
+use App\Http\Controllers\Perawat\{
+    RekamMedisController as PerawatRekamMedisController,
+    PasienController as PerawatPasienController,
+    ProfilController as PerawatProfilController
+};
 
+// ===== Dokter Controllers (BARU) =====
+use App\Http\Controllers\Dokter\{
+    RekamMedisController as DokterRekamMedisController,
+    PasienController as DokterPasienController,         
+    ProfilController as DokterProfilController          
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -39,7 +52,6 @@ use App\Http\Controllers\Resepsionis\{
 |--------------------------------------------------------------------------
 */
 Route::get('/', [SiteController::class, 'home'])->name('site.home');
-
 Route::view('/organizations', 'site.organizations')->name('site.organizations');
 Route::view('/visi', 'site.visi')->name('site.visi');
 Route::view('/layanan', 'site.layanan')->name('site.layanan');
@@ -60,11 +72,8 @@ Route::middleware(['auth', 'isAdministrator'])
     ->prefix('dashboard/admin')
     ->as('dashboard.admin.')
     ->group(function () {
-
-        // Dashboard
-        Route::get('/dashboard', [AdminDashboardController::class, 'index'])
-            ->name('dashboard-admin');
-
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard-admin');
+        
         // Master Data
         Route::resource('jenis-hewan', JenisHewanController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::resource('ras-hewan', RasHewanController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
@@ -83,11 +92,10 @@ Route::middleware(['auth', 'isAdministrator'])
         Route::resource('user', UserController::class)->except(['index', 'show']);
 
         // Rekam Medis
-        Route::resource('rekam-medis', RekamMedisController::class)
+        Route::resource('rekam-medis', AdminRekamMedisController::class)
             ->parameters(['rekam-medis' => 'rekam_medis'])
             ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
     });
-
 
 /*
 |--------------------------------------------------------------------------
@@ -98,20 +106,70 @@ Route::middleware(['auth', 'isResepsionis'])
     ->prefix('dashboard/resepsionis')
     ->as('dashboard.resepsionis.')
     ->group(function () {
-
-        // Dashboard
         Route::get('/dashboard', [ResepsionisDashboardController::class, 'index'])->name('dashboard-resepsionis');
-
-        // Registrasi Pemilik
+        
+        // Registrasi
         Route::resource('registrasi-pemilik', ResepsionisPemilikController::class)->only(['create', 'store']);
-
-        // 🔹 TAMBAHAN: Route API untuk Dropdown Ras (Agar AJAX di Form Create Berfungsi)
         Route::get('api/get-ras/{idJenis}', [ResepsionisPetController::class, 'getRasByJenis'])->name('api.get-ras');
-
-        // Registrasi Pet
-        // Saya tambahkan 'index' karena tombol "Kembali" di form mengarah ke route index
-        Route::resource('registrasi-pet', ResepsionisPetController::class)->only(['index', 'create', 'store']);
+        Route::resource('registrasi-pet', ResepsionisPetController::class)->only(['create', 'store']);
 
         // Temu Dokter
         Route::resource('temu-dokter', ResepsionisTemuDokterController::class)->except(['show', 'edit']);
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Routes Perawat
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'isPerawat'])
+    ->prefix('dashboard/perawat')
+    ->as('dashboard.perawat.')
+    ->group(function () {
+        // Redirect dashboard ke rekam medis (Opsional, jika kamu mau tetap ada dashboard bisa dihapus)
+        // Route::redirect('/', '/dashboard/perawat/rekam-medis'); // Hapus baris ini jika ingin tetap pakai PerawatDashboardController
+
+        // Route Resource Rekam Medis (Kecuali Destroy)
+        Route::resource('rekam-medis', PerawatRekamMedisController::class)->except(['destroy']);
+        
+        // Fitur Tambahan Rekam Medis (Panggil, Batal, & Tindakan)
+        Route::get('rekam-medis/{idreservasi}/panggil', [PerawatRekamMedisController::class, 'panggil'])->name('rekam-medis.panggil');
+        Route::get('rekam-medis/{idreservasi}/batal', [PerawatRekamMedisController::class, 'batal'])->name('rekam-medis.batal');
+        
+        // CRUD Tindakan (Untuk fitur tambah tindakan di detail/create)
+        Route::post('rekam-medis/{id}/tambah-tindakan', [PerawatRekamMedisController::class, 'tambahTindakan'])->name('rekam-medis.tambah-tindakan');
+        Route::put('rekam-medis/update-tindakan/{iddetail}', [PerawatRekamMedisController::class, 'updateTindakan'])->name('rekam-medis.update-tindakan');
+        Route::delete('rekam-medis/hapus-tindakan/{iddetail}', [PerawatRekamMedisController::class, 'hapusTindakan'])->name('rekam-medis.hapus-tindakan');
+
+        // Pasien & Profil
+        Route::get('pasien', [PerawatPasienController::class, 'index'])->name('pasien.index');
+        Route::get('profil', [PerawatProfilController::class, 'index'])->name('profil.index');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Routes Dokter
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'isDokter'])
+    ->prefix('dashboard/dokter')
+    ->as('dashboard.dokter.')
+    ->group(function () {
+        // Redirect dashboard ke rekam medis
+        Route::redirect('/', '/dashboard/dokter/rekam-medis');
+        Route::redirect('/dashboard', '/dashboard/dokter/rekam-medis');
+
+        // Rekam Medis (Index, Show, Update Header)
+        Route::resource('rekam-medis', DokterRekamMedisController::class)->only(['index', 'show', 'update']);
+
+        // CRUD Detail Tindakan (Fitur Utama Dokter)
+        Route::post('rekam-medis/{id}/tambah-tindakan', [DokterRekamMedisController::class, 'tambahTindakan'])->name('rekam-medis.tambah-tindakan');
+        Route::put('rekam-medis/update-tindakan/{iddetail}', [DokterRekamMedisController::class, 'updateTindakan'])->name('rekam-medis.update-tindakan');
+        Route::delete('rekam-medis/hapus-tindakan/{iddetail}', [DokterRekamMedisController::class, 'hapusTindakan'])->name('rekam-medis.hapus-tindakan');
+
+        // Data Pasien (Hanya Index)
+        Route::get('pasien', [DokterPasienController::class, 'index'])->name('pasien.index');
+
+        // Profil Saya (Hanya Index)
+        Route::get('profil', [DokterProfilController::class, 'index'])->name('profil.index');
     });

@@ -2,6 +2,25 @@
 
 @section('title', 'Dashboard - Resepsionis')
 
+@section('content')
+
+    <div class="header">
+        <h2>Selamat datang di halaman khusus resepsionis</h2>
+        
+        @php
+            // Mengambil data user (gunakan Auth::user() lebih disarankan jika sudah login)
+            $nama_user = Auth::user()->name ?? session('user_name', 'User');
+            // Untuk role, sesuaikan dengan cara Anda menyimpan role user
+            $nama_role = 'Resepsionis'; 
+        @endphp
+
+        <p>
+            Halo <b>{{ $nama_user }}</b>, anda login sebagai
+            <span class="badge">{{ $nama_role }}</span>
+        </p>
+    </div>
+@endsection
+
 @section('styles')
 <style>
     .header {
@@ -23,23 +42,3 @@
     }
 </style>
 @endsection
-
-@section('content')
-
-    <div class="header">
-        <h2>Selamat datang di halaman khusus resepsionis</h2>
-        
-        @php
-            // Mengambil data user (gunakan Auth::user() lebih disarankan jika sudah login)
-            $nama_user = Auth::user()->name ?? session('user_name', 'User');
-            // Untuk role, sesuaikan dengan cara Anda menyimpan role user
-            $nama_role = 'Resepsionis'; 
-        @endphp
-
-        <p>
-            Halo <b>{{ $nama_user }}</b>, anda login sebagai
-            <span class="badge">{{ $nama_role }}</span>
-        </p>
-    </div>
-
-    @endsection
