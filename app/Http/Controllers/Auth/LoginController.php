@@ -78,7 +78,6 @@ class LoginController extends Controller
                     ->with('success', 'Login berhasil! Selamat datang Admin.');
             
             case '2': // Dokter
-                // Pastikan route dashboard dokter sudah ada di web.php
                 return redirect()->route('dashboard.dokter.rekam-medis.index')
                     ->with('success', 'Login berhasil! Selamat datang Dokter.');
             
@@ -89,6 +88,12 @@ class LoginController extends Controller
             case '4': // Resepsionis
                 return redirect()->route('dashboard.resepsionis.dashboard-resepsionis')
                     ->with('success', 'Login berhasil! Selamat datang Resepsionis.');
+
+            // 🔥 TAMBAHAN BARU: PEMILIK (ROLE ID = 6)
+            case '6': 
+                // Asumsi Pemilik diarahkan ke halaman utama website (site.home) atau dashboard khusus pemilik (jika ada)
+                return redirect()->route('site.home')
+                    ->with('success', 'Selamat datang kembali, Pemilik.');
             
             default:
                 Auth::logout();

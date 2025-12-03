@@ -12,21 +12,28 @@ class PasienController extends Controller
      */
     public function index()
     {
-        $pasien = DB::table('pemilik')
-            ->leftJoin('pet', 'pemilik.idpemilik', '=', 'pet.idpemilik')
-            ->leftJoin('ras_hewan', 'pet.idras_hewan', '=', 'ras_hewan.idras_hewan')
-            ->leftJoin('jenis_hewan', 'ras_hewan.idjenis_hewan', '=', 'jenis_hewan.idjenis_hewan')
+        $pasien = DB::table('pemilik as pm')
+            
+            // 🔥 TAMBAHAN: Join ke tabel User untuk ambil Nama & Email Pemilik
+            ->join('user as u', 'pm.iduser', '=', 'u.iduser')
+
+            ->leftJoin('pet as p', 'pm.idpemilik', '=', 'p.idpemilik')
+            ->leftJoin('ras_hewan as r', 'p.idras_hewan', '=', 'r.idras_hewan')
+            ->leftJoin('jenis_hewan as j', 'r.idjenis_hewan', '=', 'j.idjenis_hewan')
             ->select(
-                'pemilik.idpemilik',
-                'pemilik.nama as nama_pemilik',
-                'pemilik.email',
-                'pemilik.no_wa',
-                'pemilik.alamat',
-                'pet.nama as nama_hewan', // ✅ perbaikan di sini
-                'jenis_hewan.nama_jenis_hewan',
-                'ras_hewan.nama_ras'
+                'pm.idpemilik',
+                // Ambil Nama & Email dari tabel User (u)
+                'u.nama as nama_pemilik',
+                'u.email', 
+                
+                'pm.no_wa',
+                'pm.alamat',
+                'p.nama as nama_hewan', 
+                'j.nama_jenis_hewan',
+                'r.nama_ras'
             )
-            ->orderBy('pemilik.nama')
+            // Order by nama user
+            ->orderBy('u.nama') 
             ->get();
 
         return view('dashboard.dokter.pasien.index', compact('pasien'));

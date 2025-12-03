@@ -116,9 +116,7 @@ class RekamMedisController extends Controller
 
     // =======================================================================
     // 🔥 CRUD DETAIL TINDAKAN (FITUR UTAMA DOKTER)
-    // =======================================================================
-
-    // 1. TAMBAH Item Tindakan
+    // ==============================================================
     public function tambahTindakan(Request $request, $id)
     {
         $request->validate([
