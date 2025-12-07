@@ -39,11 +39,20 @@ use App\Http\Controllers\Perawat\{
     ProfilController as PerawatProfilController
 };
 
-// ===== Dokter Controllers (BARU) =====
+// ===== Dokter Controllers =====
 use App\Http\Controllers\Dokter\{
     RekamMedisController as DokterRekamMedisController,
     PasienController as DokterPasienController,         
     ProfilController as DokterProfilController          
+};
+
+// ===== Pemilik Controllers =====
+use App\Http\Controllers\Pemilik\{
+    PemilikDashboardController,
+    DaftarPetController,
+    ProfilController,
+    RekamMedisController,
+    ReservasiController
 };
 
 /*
@@ -126,17 +135,14 @@ Route::middleware(['auth', 'isPerawat'])
     ->prefix('dashboard/perawat')
     ->as('dashboard.perawat.')
     ->group(function () {
-        // Redirect dashboard ke rekam medis (Opsional, jika kamu mau tetap ada dashboard bisa dihapus)
-        // Route::redirect('/', '/dashboard/perawat/rekam-medis'); // Hapus baris ini jika ingin tetap pakai PerawatDashboardController
-
         // Route Resource Rekam Medis (Kecuali Destroy)
         Route::resource('rekam-medis', PerawatRekamMedisController::class)->except(['destroy']);
         
-        // Fitur Tambahan Rekam Medis (Panggil, Batal, & Tindakan)
+        // Fitur Tambahan Rekam Medis
         Route::get('rekam-medis/{idreservasi}/panggil', [PerawatRekamMedisController::class, 'panggil'])->name('rekam-medis.panggil');
         Route::get('rekam-medis/{idreservasi}/batal', [PerawatRekamMedisController::class, 'batal'])->name('rekam-medis.batal');
         
-        // CRUD Tindakan (Untuk fitur tambah tindakan di detail/create)
+        // CRUD Tindakan
         Route::post('rekam-medis/{id}/tambah-tindakan', [PerawatRekamMedisController::class, 'tambahTindakan'])->name('rekam-medis.tambah-tindakan');
         Route::put('rekam-medis/update-tindakan/{iddetail}', [PerawatRekamMedisController::class, 'updateTindakan'])->name('rekam-medis.update-tindakan');
         Route::delete('rekam-medis/hapus-tindakan/{iddetail}', [PerawatRekamMedisController::class, 'hapusTindakan'])->name('rekam-medis.hapus-tindakan');
@@ -159,17 +165,44 @@ Route::middleware(['auth', 'isDokter'])
         Route::redirect('/', '/dashboard/dokter/rekam-medis');
         Route::redirect('/dashboard', '/dashboard/dokter/rekam-medis');
 
-        // Rekam Medis (Index, Show, Update Header)
+        // Rekam Medis
         Route::resource('rekam-medis', DokterRekamMedisController::class)->only(['index', 'show', 'update']);
 
-        // CRUD Detail Tindakan (Fitur Utama Dokter)
+        // CRUD Detail Tindakan
         Route::post('rekam-medis/{id}/tambah-tindakan', [DokterRekamMedisController::class, 'tambahTindakan'])->name('rekam-medis.tambah-tindakan');
         Route::put('rekam-medis/update-tindakan/{iddetail}', [DokterRekamMedisController::class, 'updateTindakan'])->name('rekam-medis.update-tindakan');
         Route::delete('rekam-medis/hapus-tindakan/{iddetail}', [DokterRekamMedisController::class, 'hapusTindakan'])->name('rekam-medis.hapus-tindakan');
 
-        // Data Pasien (Hanya Index)
+        // Data Pasien & Profil
         Route::get('pasien', [DokterPasienController::class, 'index'])->name('pasien.index');
-
-        // Profil Saya (Hanya Index)
         Route::get('profil', [DokterProfilController::class, 'index'])->name('profil.index');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Routes Pemilik
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'isPemilik'])
+    ->prefix('dashboard/pemilik')
+    ->as('dashboard.pemilik.') // Titik di sini penting untuk penamaan route
+    ->group(function () {
+        
+        // 1. Dashboard Utama (Pastikan route ini ada agar LoginController tidak error)
+        Route::get('/', [PemilikDashboardController::class, 'index'])->name('home'); 
+        Route::get('/dashboard', [PemilikDashboardController::class, 'index'])->name('dashboard-pemilik');
+
+        // 2. Rekam Medis (HANYA VIEW - Read Only untuk Pemilik)
+        Route::resource('rekam-medis', RekamMedisController::class)->only(['index', 'show']);
+        
+        // Note: Route 'tambah-tindakan' dan 'hapus-tindakan' dihapus karena Pemilik tidak boleh mengedit RM.
+
+        // 3. Data Pet
+        Route::resource('daftar-pet', DaftarPetController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+
+        // 4. Profil
+        Route::get('profil', [ProfilController::class, 'index'])->name('profil.index');
+
+        // 5. Reservasi
+        Route::resource('reservasi', ReservasiController::class)->only(['index', 'create', 'store', 'destroy']);
     });

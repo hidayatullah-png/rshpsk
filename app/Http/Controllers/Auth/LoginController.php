@@ -89,10 +89,10 @@ class LoginController extends Controller
                 return redirect()->route('dashboard.resepsionis.dashboard-resepsionis')
                     ->with('success', 'Login berhasil! Selamat datang Resepsionis.');
 
-            // 🔥 TAMBAHAN BARU: PEMILIK (ROLE ID = 6)
+            // 🔥 PERBAIKAN DI SINI: PEMILIK (ROLE ID = 6)
             case '6': 
-                // Asumsi Pemilik diarahkan ke halaman utama website (site.home) atau dashboard khusus pemilik (jika ada)
-                return redirect()->route('site.home')
+                // Pemilik
+                return redirect()->route('dashboard.pemilik.home')
                     ->with('success', 'Selamat datang kembali, Pemilik.');
             
             default:
@@ -100,6 +100,7 @@ class LoginController extends Controller
                 return redirect()->route('login')->with('error', 'Role tidak dikenali atau Anda tidak memiliki akses.');
         }
 
+        
     }
 
     public function logout(Request $request)

@@ -10,137 +10,121 @@ use Illuminate\Support\Facades\Auth;
 class RekamMedisController extends Controller
 {
     // ==========================
-    // INDEX — Daftar Rekam Medis Pemilik
+    // INDEX — Daftar Riwayat Medis
     // ==========================
-public function index(Request $request)
-{
-    $pemilik = DB::table('pemilik')
-        ->where('email', Auth::user()->email)
-        ->first();
+    public function index(Request $request)
+    {
+        try {
+            // 1. Ambil data pemilik yang sedang login
+            $user = Auth::user();
+            $pemilik = DB::table('pemilik')->where('iduser', $user->iduser)->first();
 
-    // kalau pemilik belum terdaftar, kirim variabel kosong agar view tidak error
-    if (!$pemilik) {
-        return view('dashboard.pemilik.rekam-medis.index', [
-            'rekamMedis' => collect(),
-            'pets' => collect(), // 🟢 fix penting!
-            'petId' => null,
-            'tanggal' => null,
-        ]);
+            // Jika user login bukan pemilik, kembalikan list kosong
+            if (!$pemilik) {
+                return view('dashboard.pemilik.rekam-medis.index', [
+                    'rekamMedis' => collect(), // Collection kosong
+                    'pets' => collect()
+                ]);
+            }
+
+            // 2. Query Data Rekam Medis
+            $query = DB::table('rekam_medis as rm')
+                // Hubungkan ke Reservasi & Pet untuk validasi kepemilikan
+                ->join('temu_dokter as td', 'rm.idreservasi_dokter', '=', 'td.idreservasi_dokter')
+                ->join('pet as p', 'td.idpet', '=', 'p.idpet')
+                // Ambil data dokter (Left Join agar tidak error jika dokter dihapus)
+                ->leftJoin('user as dokter', 'rm.dokter_pemeriksa', '=', 'dokter.iduser')
+                
+                // Filter: Hanya tampilkan rekam medis milik hewan dari pemilik yang login
+                ->where('p.idpemilik', $pemilik->idpemilik)
+                
+                ->select(
+                    'rm.idrekam_medis',
+                    'rm.created_at',
+                    'rm.diagnosa',
+                    'p.nama as nama_pet',
+                    'dokter.nama as nama_dokter'
+                )
+                ->orderBy('rm.created_at', 'desc');
+
+            // 3. Filter (Jika ada input dari user)
+            if ($request->filled('idpet')) {
+                $query->where('p.idpet', $request->idpet);
+            }
+
+            // Eksekusi Query dengan Pagination
+            $rekamMedis = $query->paginate(10);
+
+            // 4. Ambil Data Hewan (Untuk Dropdown Filter)
+            $pets = DB::table('pet')
+                ->where('idpemilik', $pemilik->idpemilik)
+                ->select('idpet', 'nama')
+                ->orderBy('nama')
+                ->get();
+
+            return view('dashboard.pemilik.rekam-medis.index', compact('rekamMedis', 'pets'));
+
+        } catch (\Throwable $e) {
+            // Tampilkan error spesifik agar mudah diperbaiki
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
-
-    // Filter opsional
-    $petId = $request->query('idpet');
-    $tanggal = $request->query('tanggal');
-
-    $rekamMedis = DB::table('rekam_medis as rm')
-        ->join('pet as p', 'p.idpet', '=', 'rm.idpet')
-        ->where('p.idpemilik', $pemilik->idpemilik)
-        ->when($petId, fn($q) => $q->where('rm.idpet', $petId))
-        ->when($tanggal, fn($q) => $q->whereDate('rm.created_at', $tanggal))
-        ->select('rm.*', 'p.nama as nama_pet')
-        ->orderByDesc('rm.created_at')
-        ->get();
-
-    $pets = DB::table('pet')
-        ->where('idpemilik', $pemilik->idpemilik)
-        ->select('idpet', 'nama')
-        ->get();
-
-    return view('dashboard.pemilik.rekam-medis.index', compact('rekamMedis', 'pets', 'petId', 'tanggal'));
-}
 
     // ==========================
     // SHOW — Detail Rekam Medis
     // ==========================
     public function show($id)
     {
-        // Header rekam medis (info umum)
-        $header = DB::table('rekam_medis as rm')
-            ->join('pet as p', 'p.idpet', '=', 'rm.idpet')
-            ->join('pemilik as pm', 'pm.idpemilik', '=', 'p.idpemilik')
-            ->select('rm.*', 'p.nama as nama_pet', 'pm.nama as nama_pemilik')
-            ->where('rm.idrekam_medis', $id)
-            ->first();
+        try {
+            $user = Auth::user();
+            $pemilik = DB::table('pemilik')->where('iduser', $user->iduser)->first();
 
-        if (!$header) {
-            abort(404, 'Rekam medis tidak ditemukan.');
+            if (!$pemilik) {
+                return redirect()->route('dashboard.pemilik.rekam-medis.index')
+                    ->with('error', 'Data pemilik tidak valid.');
+            }
+
+            // 1. Ambil Header Rekam Medis
+            $rekamMedis = DB::table('rekam_medis as rm')
+                ->leftJoin('temu_dokter as td', 'rm.idreservasi_dokter', '=', 'td.idreservasi_dokter')
+                ->leftJoin('pet as p', 'td.idpet', '=', 'p.idpet')
+                ->leftJoin('ras_hewan as rh', 'p.idras_hewan', '=', 'rh.idras_hewan')
+                ->leftJoin('jenis_hewan as jh', 'rh.idjenis_hewan', '=', 'jh.idjenis_hewan')
+                ->leftJoin('pemilik as pem', 'p.idpemilik', '=', 'pem.idpemilik') // Join tabel pemilik
+                ->leftJoin('user as dokter', 'rm.dokter_pemeriksa', '=', 'dokter.iduser')
+                
+                // Select Data
+                ->select(
+                    'rm.*',
+                    'p.nama as nama_pet',
+                    'jh.nama_jenis_hewan as jenis_hewan',
+                    'rh.nama_ras as ras',
+                    'pem.no_wa', // Tambahkan no_wa
+                    'dokter.nama as nama_dokter'
+                )
+                ->where('rm.idrekam_medis', $id)
+                // Security Check: Pastikan data yang dilihat milik pemilik ini
+                ->where('p.idpemilik', $pemilik->idpemilik)
+                ->first();
+
+            if (!$rekamMedis) {
+                return back()->with('error', 'Data rekam medis tidak ditemukan.');
+            }
+
+            // Tambahkan nama pemilik secara manual ke object (karena sudah pasti user yang login)
+            $rekamMedis->nama_pemilik = $user->nama;
+
+            // 2. Ambil Detail Tindakan (Jika tabel detail tersedia)
+            $detailRekamMedis = DB::table('detail_rekam_medis as drm')
+                ->join('kode_tindakan_terapi as ktt', 'drm.idkode_tindakan_terapi', '=', 'ktt.idkode_tindakan_terapi')
+                ->where('drm.idrekam_medis', $id)
+                ->select('drm.*', 'ktt.kode', 'ktt.deskripsi_tindakan_terapi')
+                ->get();
+
+            return view('dashboard.pemilik.rekam-medis.show', compact('rekamMedis', 'detailRekamMedis'));
+
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Gagal memuat detail: ' . $e->getMessage());
         }
-
-        // Detail tindakan/terapi
-        $detail = DB::table('detail_rekam_medis as d')
-            ->join('kode_tindakan_terapi as k', 'k.idkode_tindakan_terapi', '=', 'd.idkode_tindakan_terapi')
-            ->leftJoin('kategori as kt', 'kt.idkategori', '=', 'k.idkategori')
-            ->leftJoin('kategori_klinis as kk', 'kk.idkategori_klinis', '=', 'k.idkategori_klinis')
-            ->where('d.idrekam_medis', $id)
-            ->select(
-                'd.*',
-                'k.kode',
-                'k.deskripsi_tindakan_terapi',
-                'kt.nama_kategori as nama_kategori',
-                'kk.nama_kategori_klinis'
-            )
-            ->get();
-
-        return view('dashboard.pemilik.rekam-medis.show', compact('header', 'detail'));
-    }
-
-    // ==========================
-    // CREATE — Form Tambah Keluhan Awal
-    // ==========================
-    public function create()
-    {
-        $pemilik = DB::table('pemilik')
-            ->where('email', Auth::user()->email)
-            ->first();
-
-        if (!$pemilik) {
-            abort(403, 'Akun pemilik tidak ditemukan.');
-        }
-
-        $pets = DB::table('pet')
-            ->where('idpemilik', $pemilik->idpemilik)
-            ->get();
-
-        return view('dashboard.pemilik.rekam-medis.create', compact('pets'));
-    }
-
-    // ==========================
-    // STORE — Simpan Keluhan Awal
-    // ==========================
-    public function store(Request $request)
-    {
-        $this->validateRekam($request);
-
-        DB::table('keluhan_awal')->insert([
-            'idpet'      => $request->idpet,
-            'keluhan'    => $this->formatText($request->keluhan),
-            'created_at' => now(),
-        ]);
-
-        return redirect()
-            ->route('pemilik.rekam-medis.index')
-            ->with('ok', 'Keluhan awal berhasil dikirim. Dokter akan meninjau!');
-    }
-
-    // ==========================
-    // VALIDATION
-    // ==========================
-    private function validateRekam(Request $request)
-    {
-        $request->validate([
-            'idpet'   => 'required|integer',
-            'keluhan' => 'required|string|min:5|max:255',
-        ], [
-            'idpet.required'   => 'Pilih hewan yang akan diperiksa.',
-            'keluhan.required' => 'Tuliskan keluhan awal hewan Anda.',
-        ]);
-    }
-
-    // ==========================
-    // HELPER — Format Text
-    // ==========================
-    private function formatText(string $text)
-    {
-        return ucfirst(strtolower(trim($text)));
     }
 }
