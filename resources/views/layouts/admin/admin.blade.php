@@ -1,14 +1,11 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title')</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
     <style>
@@ -18,161 +15,185 @@
             padding-top: 110px;
         }
 
-        /* --- FLASH MESSAGE (Centered) --- */
+        /* =============================
+           FLASH MESSAGE
+        ============================= */
         .alert-container {
             position: fixed;
             top: 120px;
-            /* Adjust this if you want it lower/higher */
             left: 50%;
-            /* Move to middle of screen horizontally */
             transform: translateX(-50%);
-            /* Center align exactly */
             z-index: 9999;
-            width: auto;
             min-width: 300px;
             max-width: 600px;
-            /* Increased max-width slightly for center look */
             text-align: center;
-            /* Center text inside */
         }
 
         .alert {
             padding: 15px 20px;
             border-radius: 8px;
             margin-bottom: 15px;
-            border: 1px solid transparent;
             display: flex;
-            align-items: center;
             justify-content: center;
-            /* Center icon and text */
+            align-items: center;
             gap: 12px;
             font-weight: 500;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            /* Changed animation to slide from top */
-            animation: slideInDown 0.5s ease-out forwards;
+            box-shadow: 0 4px 15px rgba(0,0,0,.1);
+            animation: slideInDown .5s ease-out forwards;
         }
 
-        /* SUCCESS: Light Green Background */
         .alert-success {
             color: #0f5132;
             background-color: #d1e7dd;
-            border-color: #badbcc;
+            border: 1px solid #badbcc;
         }
 
-        /* ERROR: Light Red Background */
         .alert-danger {
             color: #842029;
             background-color: #f8d7da;
-            border-color: #f5c2c7;
+            border: 1px solid #f5c2c7;
         }
 
-        .alert i {
-            font-size: 1.1rem;
-        }
-
-        /* New Animation: Slide Down and Fade In */
         @keyframes slideInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-20px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes fadeOut {
-            to {
-                opacity: 0;
-                visibility: hidden;
-            }
+            to { opacity: 0; visibility: hidden; }
         }
 
-        /* ----------------------------------- */
-
-        /* Styles Global */
+        /* =============================
+           MAIN CONTAINER
+        ============================= */
         .main-container {
             max-width: 1000px;
             margin: 3rem auto;
             padding: 2rem;
-            background-color: white;
+            background: white;
             border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 25px rgba(0,0,0,.1);
             text-align: center;
         }
 
         .main-container h2 {
             font-size: 2.2rem;
             color: #3ea2c7;
-            margin: 0.5rem auto;
-            padding: 0.5rem;
             font-weight: 700;
+            margin-bottom: 1.5rem;
         }
 
+        /* =============================
+           ACTION HEADER (FIXED)
+        ============================= */
         .action-header {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between; /* ⬅️ PENTING */
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
             margin-bottom: 1.2rem;
         }
 
+        .action-left {
+            margin-right: auto;
+            display: flex;
+            gap: 8px;
+        }
+
+        /* =============================
+           BUTTON
+        ============================= */
         .btn {
             padding: 8px 15px;
-            border: none;
             border-radius: 5px;
-            cursor: pointer;
+            font-size: .9rem;
             font-weight: 500;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            font-size: 0.9rem;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 0.3rem;
+            gap: .3rem;
+            transition: .2s;
+            cursor: pointer;
+            border: none;
             white-space: nowrap;
         }
 
-        .btn:hover {
-            transform: translateY(-2px);
+        .btn:hover { transform: translateY(-2px); }
+
+        .btn-primary { background: #3ea2c7; color: #fff; }
+        .btn-secondary { background: #6c757d; color: #fff; }
+        .btn-success { background: #28a745; color: #fff; }
+        .btn-danger { background: #dc3545; color: #fff; }
+
+        /* =============================
+           BADGE
+        ============================= */
+        .badge {
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: .85rem;
+            font-weight: 500;
         }
 
-        .btn-primary {
-            background-color: #3ea2c7;
-            color: white;
+        .badge-success { background:#d1e7dd; color:#0f5132; border:1px solid #badbcc; }
+        .badge-danger { background:#f8d7da; color:#842029; border:1px solid #f5c2c7; }
+        .badge-secondary { background:#e2e3e5; color:#383d41; border:1px solid #d6d8db; }
+
+        .ml-2 { margin-left:.5rem; }
+
+        /* =============================
+           EMPTY STATE
+        ============================= */
+        .empty-message {
+            padding: 40px;
+            background: #fff;
+            border-radius: 8px;
+            color: #777;
+            box-shadow: 0 2px 5px rgba(0,0,0,.05);
         }
 
-        .btn-primary:hover {
-            background-color: #2e8aa8;
+        .empty-state-actions { margin-top: 15px; }
+
+        /* =============================
+           ADMIN FORM
+        ============================= */
+        .form-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            background: #fff;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,.08);
+            text-align: left;
         }
 
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
+        .form-header {
+            text-align: center;
+            margin-bottom: 2rem;
         }
 
-        .btn-secondary:hover {
-            background-color: #5a6268;
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            transition: .3s;
         }
 
-        .btn-success {
-            background-color: #28a745;
-            color: white;
+        .form-control:focus {
+            border-color: #3ea2c7;
+            box-shadow: 0 0 0 3px rgba(62,162,199,.2);
+            outline: none;
         }
 
-        .btn-success:hover {
-            background-color: #218838;
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 2rem;
         }
-
-        .btn-danger {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background-color: #c82333;
-        }
-
-        .table-responsive {
+                .table-responsive {
             overflow-x: auto;
         }
 
@@ -298,45 +319,59 @@
                 margin-bottom: 5px;
             }
         }
+
+        /* =============================
+           RESPONSIVE
+        ============================= */
+        @media (max-width: 768px) {
+            .action-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .action-header .btn,
+            .form-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .form-actions {
+                flex-direction: column-reverse;
+            }
+        }
     </style>
 </head>
 
 <body>
 
-    {{-- NAVBAR --}}
-    <x-navbar />
+<x-navbar />
 
-    {{-- FLASH MESSAGES (CENTERED) --}}
-    <div class="alert-container">
-        @if(session('success'))
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i>
-                <span>{{ session('success') }}</span>
-            </div>
-        @endif
+<div class="alert-container">
+    @if(session('success'))
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <span>{{ session('success') }}</span>
+        </div>
+    @endif
 
-        {{-- Menangani session 'error' ATAU 'danger' --}}
-        @if(session('error') || session('danger'))
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>{{ session('error') ?? session('danger') }}</span>
-            </div>
-        @endif
-    </div>
+    @if(session('error') || session('danger'))
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>{{ session('error') ?? session('danger') }}</span>
+        </div>
+    @endif
+</div>
 
-    {{-- CONTENT --}}
-    @yield('content')
+@yield('content')
 
-    {{-- Script: Remove alert after 4 seconds --}}
-    <script>
-        setTimeout(function () {
-            let alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function (alert) {
-                alert.style.animation = "fadeOut 0.5s forwards";
-                setTimeout(function () { alert.remove(); }, 500);
-            });
-        }, 4000); 
-    </script>
+<script>
+setTimeout(() => {
+    document.querySelectorAll('.alert').forEach(alert => {
+        alert.style.animation = "fadeOut .5s forwards";
+        setTimeout(() => alert.remove(), 500);
+    });
+}, 4000);
+</script>
+
 </body>
-
 </html>

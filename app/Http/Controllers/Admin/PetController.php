@@ -3,39 +3,59 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Pet;
-use App\Models\Pemilik;
-use App\Models\RasHewan;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class PetController extends Controller
 {
-    /** Helper pesan redirect */
-    private function redirectMsg($route, $msg, $type = 'success')
+    /** 🔹 Helper pesan redirect */
+    private function redirectMsg($route, $msg, $type = 'success', $params = [])
     {
-        return redirect()->route($route)->with($type, $msg);
+        return redirect()->route($route, $params)->with($type, $msg);
     }
 
     /** 🔹 API: Ambil Ras berdasarkan Jenis Hewan (Untuk AJAX Dropdown) */
     public function getRasByJenis($idJenis)
     {
-        $ras = RasHewan::where('idjenis_hewan', $idJenis)
+        $ras = DB::table('ras_hewan')
+            ->where('idjenis_hewan', $idJenis)
+            ->whereNull('deleted_at') // Hanya ambil ras aktif
             ->orderBy('nama_ras')
             ->get();
+            
         return response()->json($ras);
     }
 
-    /** 🔹 Tampilkan semua data Pet */
-    public function index()
+    /** 🔹 Tampilkan semua data Pet (Aktif & Sampah) */
+    public function index(Request $request)
     {
         try {
-            $pets = Pet::with(['pemilik.user', 'ras.jenis'])
-                ->orderBy('nama')
-                ->get();
+            // Query Dasar dengan Join Lengkap
+            $query = DB::table('pet')
+                ->join('pemilik', 'pet.idpemilik', '=', 'pemilik.idpemilik')
+                ->join('user', 'pemilik.iduser', '=', 'user.iduser') // Ambil nama pemilik
+                ->join('ras_hewan', 'pet.idras_hewan', '=', 'ras_hewan.idras_hewan')
+                ->join('jenis_hewan', 'ras_hewan.idjenis_hewan', '=', 'jenis_hewan.idjenis_hewan')
+                ->select(
+                    'pet.*',
+                    'user.nama as nama_pemilik',
+                    'ras_hewan.nama_ras',
+                    'jenis_hewan.nama_jenis_hewan'
+                );
+
+            // Filter Mode Sampah
+            if ($request->has('trash') && $request->trash == 1) {
+                $query->whereNotNull('pet.deleted_at');
+            } else {
+                $query->whereNull('pet.deleted_at');
+            }
+
+            $pets = $query->orderBy('pet.nama', 'asc')->get();
 
             return view('dashboard.admin.pet.index', compact('pets'));
+
         } catch (\Throwable $e) {
             Log::error('Gagal menampilkan pet: ' . $e->getMessage());
             return back()->with('danger', 'Gagal memuat data pet.');
@@ -46,15 +66,20 @@ class PetController extends Controller
     public function create()
     {
         try {
-            // Ambil Pemilik (Join ke User untuk sorting nama)
-            $pemilikList = Pemilik::with('user')
+            // Ambil Pemilik (Join ke User untuk sorting nama) - Hanya Aktif
+            $pemilikList = DB::table('pemilik')
                 ->join('user', 'pemilik.iduser', '=', 'user.iduser')
+                ->whereNull('pemilik.deleted_at')
+                ->whereNull('user.deleted_at')
                 ->orderBy('user.nama')
-                ->select('pemilik.*')
+                ->select('pemilik.idpemilik', 'user.nama')
                 ->get();
 
-            // Ambil Jenis Hewan
-            $jenisList = DB::table('jenis_hewan')->orderBy('nama_jenis_hewan')->get();
+            // Ambil Jenis Hewan - Hanya Aktif
+            $jenisList = DB::table('jenis_hewan')
+                ->whereNull('deleted_at')
+                ->orderBy('nama_jenis_hewan')
+                ->get();
 
             return view('dashboard.admin.pet.create', compact('pemilikList', 'jenisList'));
         } catch (\Throwable $e) {
@@ -76,7 +101,15 @@ class PetController extends Controller
         ]);
 
         try {
-            Pet::create($r->all()); // Bisa pakai all() karena nama field form = nama kolom DB
+            DB::table('pet')->insert([
+                'nama'          => $r->nama,
+                'tanggal_lahir' => $r->tanggal_lahir,
+                'warna_tanda'   => $r->warna_tanda,
+                'jenis_kelamin' => $r->jenis_kelamin,
+                'idpemilik'     => $r->idpemilik,
+                'idras_hewan'   => $r->idras_hewan,
+                // 'created_at' => now(), // Uncomment jika ada kolom created_at
+            ]);
 
             return $this->redirectMsg('dashboard.admin.pet.index', '🐶 Data Pet berhasil ditambahkan!');
         } catch (\Throwable $e) {
@@ -89,34 +122,55 @@ class PetController extends Controller
     public function edit($id)
     {
         try {
-            $pet = Pet::with(['ras'])->findOrFail($id);
+            // Ambil data Pet & Join Ras untuk tahu Jenis Hewan saat ini
+            $pet = DB::table('pet')
+                ->join('ras_hewan', 'pet.idras_hewan', '=', 'ras_hewan.idras_hewan')
+                ->where('pet.idpet', $id)
+                ->whereNull('pet.deleted_at')
+                ->select('pet.*', 'ras_hewan.idjenis_hewan')
+                ->first();
 
-            $pemilikList = Pemilik::with('user')
+            if (!$pet) return back()->with('danger', 'Data tidak ditemukan atau sudah dihapus.');
+
+            // List Pemilik
+            $pemilikList = DB::table('pemilik')
                 ->join('user', 'pemilik.iduser', '=', 'user.iduser')
+                ->whereNull('pemilik.deleted_at')
                 ->orderBy('user.nama')
-                ->select('pemilik.*')
+                ->select('pemilik.idpemilik', 'user.nama')
                 ->get();
 
-            $jenisList = DB::table('jenis_hewan')->orderBy('nama_jenis_hewan')->get();
+            // List Jenis Hewan
+            $jenisList = DB::table('jenis_hewan')
+                ->whereNull('deleted_at')
+                ->orderBy('nama_jenis_hewan')
+                ->get();
 
-            // Logic untuk Dropdown Berantai (Jenis -> Ras)
-            $currentJenisId = $pet->ras ? $pet->ras->idjenis_hewan : null;
+            // Logic Dropdown Berantai (Populate Ras berdasarkan Jenis saat ini)
+            $currentJenisId = $pet->idjenis_hewan;
             $rasList = [];
+            
             if ($currentJenisId) {
-                $rasList = RasHewan::where('idjenis_hewan', $currentJenisId)
+                $rasList = DB::table('ras_hewan')
+                    ->where('idjenis_hewan', $currentJenisId)
+                    ->whereNull('deleted_at')
                     ->orderBy('nama_ras')
                     ->get();
             }
 
             return view('dashboard.admin.pet.edit', compact('pet', 'pemilikList', 'jenisList', 'rasList', 'currentJenisId'));
         } catch (\Throwable $e) {
-            return back()->with('danger', 'Data tidak ditemukan.');
+            return back()->with('danger', 'Error memuat data edit.');
         }
     }
 
     /** 🔹 Update data */
     public function update(Request $r, $id)
     {
+        // Pastikan data aktif
+        $exists = DB::table('pet')->where('idpet', $id)->whereNull('deleted_at')->exists();
+        if (!$exists) abort(404);
+
         $r->validate([
             'nama'          => 'required|string|max:100',
             'tanggal_lahir' => 'nullable|date',
@@ -127,8 +181,15 @@ class PetController extends Controller
         ]);
 
         try {
-            $pet = Pet::findOrFail($id);
-            $pet->update($r->all());
+            DB::table('pet')->where('idpet', $id)->update([
+                'nama'          => $r->nama,
+                'tanggal_lahir' => $r->tanggal_lahir,
+                'warna_tanda'   => $r->warna_tanda,
+                'jenis_kelamin' => $r->jenis_kelamin,
+                'idpemilik'     => $r->idpemilik,
+                'idras_hewan'   => $r->idras_hewan,
+                // 'updated_at' => now(),
+            ]);
 
             return $this->redirectMsg('dashboard.admin.pet.index', '✅ Data Pet berhasil diperbarui!');
         } catch (\Throwable $e) {
@@ -137,37 +198,47 @@ class PetController extends Controller
         }
     }
 
-    /** 🔹 Hapus data (AMAN & FINAL) */
+    /** 🔹 Soft Delete */
     public function destroy($id)
     {
         try {
-            // 1. Cek relasi
-            $pet = Pet::withCount(['rekamMedis', 'temuDokter'])->findOrFail($id);
+            $pet = DB::table('pet')->where('idpet', $id)->first();
+            if (!$pet) return back()->with('danger', 'Data tidak ditemukan.');
 
-            // 2. Validasi Rekam Medis
-            if ($pet->rekam_medis_count > 0) {
-                return back()->with('danger', "❌ Gagal! Hewan '{$pet->nama}' memiliki {$pet->rekam_medis_count} riwayat rekam medis. Hapus datanya terlebih dahulu.");
+            // 1. Cek Rekam Medis
+            // Asumsi tabel rekam_medis menggunakan 'idpet'
+            $rmCount = DB::table('rekam_medis')->where('idpet', $id)->count();
+            if ($rmCount > 0) {
+                return back()->with('danger', "❌ Gagal! Hewan '{$pet->nama}' memiliki {$rmCount} riwayat rekam medis.");
             }
 
-            // 3. Validasi Antrian/Reservasi
-            if ($pet->temu_dokter_count > 0) {
-                return back()->with('danger', "❌ Gagal! Hewan '{$pet->nama}' masih terdaftar di {$pet->temu_dokter_count} antrian/jadwal dokter.");
+            // 2. Cek Temu Dokter / Reservasi
+            // Asumsi tabel temu_dokter menggunakan 'idpet'
+            $tdCount = DB::table('temu_dokter')->where('idpet', $id)->count();
+            if ($tdCount > 0) {
+                return back()->with('danger', "❌ Gagal! Hewan '{$pet->nama}' terdaftar di {$tdCount} jadwal temu dokter.");
             }
 
-            // 4. Hapus jika aman
-            $pet->delete();
+            // 3. Lakukan Soft Delete
+            DB::table('pet')->where('idpet', $id)->update(['deleted_at' => Carbon::now()]);
 
-            return back()->with('success', '🗑️ Data Pet berhasil dihapus.');
+            return back()->with('success', '🗑️ Data Pet berhasil dipindahkan ke sampah.');
 
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Pesan ramah user jika ada constraint lain
-            if ($e->getCode() == "23000") {
-                return back()->with('danger', '❌ Gagal hapus: Data ini masih digunakan di tabel lain.');
-            }
-            return back()->with('danger', 'Terjadi kesalahan database.');
         } catch (\Throwable $e) {
             Log::error('Delete pet error: ' . $e->getMessage());
             return back()->with('danger', 'Gagal menghapus data.');
+        }
+    }
+
+    /** 🔹 Restore Data */
+    public function restore($id)
+    {
+        try {
+            DB::table('pet')->where('idpet', $id)->update(['deleted_at' => null]);
+            
+            return $this->redirectMsg('dashboard.admin.pet.index', '♻️ Data Pet berhasil dipulihkan.', 'success', ['trash' => 1]);
+        } catch (\Throwable $e) {
+            return back()->with('danger', 'Gagal memulihkan data.');
         }
     }
 }

@@ -3,51 +3,70 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\Role;
-use App\Models\RoleUser;
-// Import Model Dokter & Perawat
-use App\Models\Dokter;
-use App\Models\Perawat;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB; // Penting untuk Transaction
+use Carbon\Carbon;
 
 class UserRoleController extends Controller
 {
-    // ... (method index, create, store, edit tetap sama seperti sebelumnya) ...
+    // ... (Method index, create, store, edit, update TETAP SAMA) ...
 
     public function index(Request $request)
     {
+        $isTrash = $request->has('trash') && $request->trash == '1';
         $targetStatus = $request->has('status') && $request->status == '0' ? 0 : 1;
-        $isShowingNonActive = $targetStatus === 0;
+        $viewMode = 'active'; 
+        
+        $query = DB::table('role_user as ru')
+            ->join('user as u', 'ru.iduser', '=', 'u.iduser')
+            ->join('role as r', 'ru.idrole', '=', 'r.idrole')
+            ->select(
+                'ru.idrole_user as id',
+                'ru.status',
+                'ru.idrole',
+                'u.iduser',
+                'u.nama as user_name',
+                'u.deleted_at',
+                'r.nama_role as role_name'
+            );
 
-        $users = User::with(['roleUsers.role'])->orderBy('nama')->get();
-        $tableRows = collect();
-
-        foreach ($users as $user) {
-            foreach ($user->roleUsers ?? [] as $roleUser) {
-                if ($roleUser->status == $targetStatus) {
-                    $isPemilik = strtolower($roleUser->role->nama_role) === 'pemilik';
-                    $tableRows->push((object)[
-                        'user_name' => $user->nama,
-                        'role_name' => $roleUser->role->nama_role,
-                        'status'    => $roleUser->status,
-                        'id'        => $roleUser->idrole_user,
-                        'is_pemilik'=> $isPemilik,
-                        'roleUser'  => $roleUser 
-                    ]);
-                }
-            }
+        if ($isTrash) {
+            $viewMode = 'trash';
+            $query->whereNotNull('u.deleted_at');
+        } else {
+            $viewMode = $targetStatus === 1 ? 'active' : 'inactive';
+            $query->whereNull('u.deleted_at');
+            $query->where('ru.status', $targetStatus);
         }
+
+        $rawData = $query->orderBy('u.nama')->get();
+
+        $tableRows = $rawData->map(function($row) {
+            return (object) [
+                'id'         => $row->id,
+                'id_user'    => $row->iduser,
+                'user_name'  => $row->user_name,
+                'role_name'  => $row->role_name,
+                'status'     => $row->status,
+                'is_pemilik' => strtolower($row->role_name) === 'pemilik',
+                'deleted_at' => $row->deleted_at
+            ];
+        });
+
         $sortedRows = $tableRows->sortBy('is_pemilik');
-        return view('dashboard.admin.role-user.index', compact('sortedRows', 'isShowingNonActive'));
+
+        return view('dashboard.admin.role-user.index', [
+            'sortedRows' => $sortedRows,
+            'viewMode'   => $viewMode,
+            'isShowingNonActive' => $isTrash || $targetStatus === 0 
+        ]);
     }
 
     public function create()
     {
-        $users = User::orderBy('nama')->get();
-        $roles = Role::orderBy('nama_role')->get();
+        $users = DB::table('user')->whereNull('deleted_at')->orderBy('nama')->get();
+        $roles = DB::table('role')->whereNull('deleted_at')->orderBy('nama_role')->get();
         return view('dashboard.admin.role-user.create', compact('users', 'roles'));
     }
 
@@ -60,58 +79,39 @@ class UserRoleController extends Controller
             'idrole'   => 'required|exists:role,idrole',
         ]);
 
-        $role = Role::find($request->idrole);
+        $role = DB::table('role')->where('idrole', $request->idrole)->first();
         $roleName = strtolower($role->nama_role);
         $isDokter = str_contains($roleName, 'dokter');
         $isPerawat = str_contains($roleName, 'perawat');
 
         if ($isDokter) {
-            $request->validate([
-                'alamat'        => 'required|string',
-                'no_hp'         => 'required|string',
-                'jenis_kelamin' => 'required|in:L,P',
-                'bidang_dokter' => 'required|string',
-            ]);
+            $request->validate(['alamat' => 'required', 'no_hp' => 'required', 'jenis_kelamin' => 'required', 'bidang_dokter' => 'required']);
         } elseif ($isPerawat) {
-            $request->validate([
-                'alamat'        => 'required|string',
-                'no_hp'         => 'required|string',
-                'jenis_kelamin' => 'required|in:L,P',
-                'pendidikan'    => 'required|string',
-            ]);
+            $request->validate(['alamat' => 'required', 'no_hp' => 'required', 'jenis_kelamin' => 'required', 'pendidikan' => 'required']);
         }
 
         DB::beginTransaction();
         try {
-            $user = User::create([
+            $idUser = DB::table('user')->insertGetId([
                 'nama'     => $request->nama,
                 'email'    => $request->email,
                 'password' => Hash::make($request->password),
             ]);
 
-            $user->roles()->attach($request->idrole, ['status' => 1]); 
+            DB::table('role_user')->insert([
+                'iduser' => $idUser,
+                'idrole' => $request->idrole,
+                'status' => 1,
+            ]);
 
             if ($isDokter) {
-                Dokter::create([
-                    'id_user'       => $user->getKey(),
-                    'alamat'        => $request->alamat,
-                    'no_hp'         => $request->no_hp,
-                    'jenis_kelamin' => $request->jenis_kelamin,
-                    'bidang_dokter' => $request->bidang_dokter,
-                ]);
+                DB::table('dokter')->insert(['id_user' => $idUser, 'alamat' => $request->alamat, 'no_hp' => $request->no_hp, 'jenis_kelamin' => $request->jenis_kelamin, 'bidang_dokter' => $request->bidang_dokter]);
             } elseif ($isPerawat) {
-                Perawat::create([
-                    'id_user'       => $user->getKey(),
-                    'alamat'        => $request->alamat,
-                    'no_hp'         => $request->no_hp,
-                    'jenis_kelamin' => $request->jenis_kelamin,
-                    'pendidikan'    => $request->pendidikan,
-                ]);
+                DB::table('perawat')->insert(['id_user' => $idUser, 'alamat' => $request->alamat, 'no_hp' => $request->no_hp, 'jenis_kelamin' => $request->jenis_kelamin, 'pendidikan' => $request->pendidikan]);
             }
 
             DB::commit();
-            return redirect()->route('dashboard.admin.role-user.index')
-                ->with('success', '✅ Data berhasil ditambahkan.');
+            return redirect()->route('dashboard.admin.role-user.index')->with('success', '✅ Data berhasil ditambahkan.');
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()->with('danger', '❌ Error: ' . $e->getMessage())->withInput();
@@ -120,56 +120,38 @@ class UserRoleController extends Controller
 
     public function edit($id)
     {
-        $roleUser = RoleUser::with(['user', 'role'])->find($id);
+        $roleUser = DB::table('role_user as ru')
+            ->join('user as u', 'ru.iduser', '=', 'u.iduser')
+            ->where('ru.idrole_user', $id)
+            ->select('ru.*', 'u.nama', 'u.email') 
+            ->first();
+        
         if (!$roleUser) {
             return redirect()->route('dashboard.admin.role-user.index')->with('danger', '❌ Data tidak ditemukan.');
         }
-        $roles = Role::orderBy('nama_role')->get();
+
+        $roleUser->user = (object) ['nama' => $roleUser->nama, 'email' => $roleUser->email];
+        $roles = DB::table('role')->whereNull('deleted_at')->orderBy('nama_role')->get();
+        
         return view('dashboard.admin.role-user.edit', compact('roleUser', 'roles'));
     }
 
-    /**
-     * 🔸 Update data user + role + profil dokter/perawat
-     */
     public function update(Request $request, $id)
     {
-        // 1. Ambil Data
-        $roleUser = RoleUser::with('user')->findOrFail($id);
-        $user     = $roleUser->user;
+        $currentData = DB::table('role_user')->where('idrole_user', $id)->first();
+        if (!$currentData) abort(404);
 
-        // 2. Validasi User & Role Dasar
+        $idUser = $currentData->iduser;
+
         $request->validate([
             'nama'   => 'required|string|max:255',
-            'email'  => 'required|email|max:255|unique:user,email,' . $user->getKey() . ',' . $user->getKeyName(),
+            'email'  => 'required|email|max:255|unique:user,email,' . $idUser . ',iduser',
             'idrole' => 'required|exists:role,idrole',
-            'status' => 'required', 
+            'status' => 'required|in:0,1',
         ]);
 
-        // 3. Cek Role Baru untuk Validasi Tambahan
-        $role = Role::find($request->idrole);
-        $roleName = strtolower($role->nama_role);
-        $isDokter = str_contains($roleName, 'dokter');
-        $isPerawat = str_contains($roleName, 'perawat');
-
-        // Validasi field spesifik jika role berubah jadi Dokter/Perawat
-        if ($isDokter) {
-            $request->validate([
-                'alamat'        => 'required|string',
-                'no_hp'         => 'required|string',
-                'jenis_kelamin' => 'required|in:L,P',
-                'bidang_dokter' => 'required|string',
-            ]);
-        } elseif ($isPerawat) {
-            $request->validate([
-                'alamat'        => 'required|string',
-                'no_hp'         => 'required|string',
-                'jenis_kelamin' => 'required|in:L,P',
-                'pendidikan'    => 'required|string',
-            ]);
-        }
-
-        // 4. Cek Duplikasi Role (Agar user tidak punya 2 role yang sama)
-        $exists = RoleUser::where('iduser', $user->getKey())
+        $exists = DB::table('role_user')
+            ->where('iduser', $idUser)
             ->where('idrole', $request->idrole)
             ->where('idrole_user', '!=', $id)
             ->exists();
@@ -178,64 +160,109 @@ class UserRoleController extends Controller
             return redirect()->back()->with('danger', '⚠️ User ini sudah memiliki role tersebut.')->withInput();
         }
 
-        // 5. Mulai Transaksi Database
+        $role = DB::table('role')->where('idrole', $request->idrole)->first();
+        $roleName = strtolower($role->nama_role);
+        $isDokter = str_contains($roleName, 'dokter');
+        $isPerawat = str_contains($roleName, 'perawat');
+
+        if ($isDokter) {
+            $request->validate(['alamat' => 'required', 'no_hp' => 'required', 'jenis_kelamin' => 'required', 'bidang_dokter' => 'required']);
+        } elseif ($isPerawat) {
+            $request->validate(['alamat' => 'required', 'no_hp' => 'required', 'jenis_kelamin' => 'required', 'pendidikan' => 'required']);
+        }
+
         DB::beginTransaction();
-
         try {
-            // A. Update User (Nama & Email)
-            $user->update([
-                'nama'  => $request->nama,
-                'email' => $request->email,
-            ]);
+            DB::table('user')->where('iduser', $idUser)->update(['nama' => $request->nama, 'email' => $request->email]);
+            DB::table('role_user')->where('idrole_user', $id)->update(['idrole' => $request->idrole, 'status' => $request->status]);
 
-            // B. Update RoleUser (Role & Status)
-            $roleUser->update([
-                'idrole' => $request->idrole,
-                'status' => $request->status,
-            ]);
-
-            // C. Update atau Buat Profil Dokter/Perawat
-            // Fungsi updateOrCreate akan mencari data berdasarkan 'id_user'.
-            // Jika ada -> Update. Jika tidak ada -> Create baru.
             if ($isDokter) {
-                Dokter::updateOrCreate(
-                    ['id_user' => $user->getKey()], // Kriteria pencarian
-                    [
-                        'alamat'        => $request->alamat,
-                        'no_hp'         => $request->no_hp,
-                        'jenis_kelamin' => $request->jenis_kelamin,
-                        'bidang_dokter' => $request->bidang_dokter,
-                    ]
-                );
+                DB::table('dokter')->updateOrInsert(['id_user' => $idUser], ['alamat' => $request->alamat, 'no_hp' => $request->no_hp, 'jenis_kelamin' => $request->jenis_kelamin, 'bidang_dokter' => $request->bidang_dokter]);
             } elseif ($isPerawat) {
-                Perawat::updateOrCreate(
-                    ['id_user' => $user->getKey()], // Kriteria pencarian
-                    [
-                        'alamat'        => $request->alamat,
-                        'no_hp'         => $request->no_hp,
-                        'jenis_kelamin' => $request->jenis_kelamin,
-                        'pendidikan'    => $request->pendidikan,
-                    ]
-                );
+                DB::table('perawat')->updateOrInsert(['id_user' => $idUser], ['alamat' => $request->alamat, 'no_hp' => $request->no_hp, 'jenis_kelamin' => $request->jenis_kelamin, 'pendidikan' => $request->pendidikan]);
             }
 
-            DB::commit(); // Simpan permanen
-
-            return redirect()->route('dashboard.admin.role-user.index')
-                ->with('success', '✏️ Data user, role, dan profil berhasil diperbarui.');
+            DB::commit();
+            return redirect()->route('dashboard.admin.role-user.index')->with('success', '✏️ Data berhasil diperbarui.');
 
         } catch (\Exception $e) {
-            DB::rollback(); // Batalkan jika error
-            return redirect()->back()
-                ->with('danger', '❌ Terjadi kesalahan: ' . $e->getMessage())
-                ->withInput();
+            DB::rollback();
+            return redirect()->back()->with('danger', '❌ Error: ' . $e->getMessage());
         }
     }
 
+    /**
+     * DESTROY: Hapus Data
+     */
     public function destroy($id)
     {
-        $roleUser = RoleUser::findOrFail($id);
-        $roleUser->delete();
-        return redirect()->route('dashboard.admin.role-user.index')->with('success', '🗑️ Role user berhasil dihapus.');
+        $roleUser = DB::table('role_user')->where('idrole_user', $id)->first();
+
+        if ($roleUser) {
+            $user = DB::table('user')->where('iduser', $roleUser->iduser)->first();
+            
+            if ($user) {
+                if ($user->deleted_at !== null) {
+                    // === FORCE DELETE (Hapus Permanen) ===
+                    // Hapus SEMUA data terkait user ini
+                    DB::table('dokter')->where('id_user', $user->iduser)->delete();
+                    DB::table('perawat')->where('id_user', $user->iduser)->delete();
+                    
+                    // Hapus SEMUA role milik user ini (bukan cuma yg diklik)
+                    DB::table('role_user')->where('iduser', $user->iduser)->delete();
+                    
+                    DB::table('user')->where('iduser', $user->iduser)->delete();
+
+                    return redirect()->route('dashboard.admin.role-user.index', ['trash' => 1])
+                        ->with('success', '🗑️ User telah dihapus secara PERMANEN.');
+                } else {
+                    // === SOFT DELETE (Isi timestamp deleted_at) ===
+                    $now = Carbon::now();
+
+                    // 1. Soft Delete User
+                    DB::table('user')->where('iduser', $user->iduser)->update([
+                        'deleted_at' => $now
+                    ]);
+                    
+                    // 2. Soft Delete SEMUA Role milik user ini
+                    // Update status jadi 0 dan isi deleted_at
+                    DB::table('role_user')->where('iduser', $user->iduser)->update([
+                        'status' => 0,
+                        'deleted_at' => $now 
+                    ]); 
+                    
+                    return redirect()->route('dashboard.admin.role-user.index')
+                        ->with('success', 'User dipindahkan ke sampah (Soft Delete).');
+                }
+            }
+        }
+        return redirect()->route('dashboard.admin.role-user.index')->with('danger', 'Data tidak ditemukan.');
+    }
+
+    /**
+     * RESTORE: Mengembalikan data dari Tong Sampah
+     */
+    public function restore($id)
+    {
+        // Cari role user (meskipun sudah di soft delete, masih ada di DB)
+        $roleUser = DB::table('role_user')->where('idrole_user', $id)->first();
+        
+        if ($roleUser) {
+            // 1. Restore User
+            DB::table('user')->where('iduser', $roleUser->iduser)->update([
+                'deleted_at' => null
+            ]);
+            
+            // 2. Restore SEMUA Role milik user ini
+            DB::table('role_user')->where('iduser', $roleUser->iduser)->update([
+                'status' => 1,
+                'deleted_at' => null
+            ]);
+
+            return redirect()->route('dashboard.admin.role-user.index', ['trash' => 1])
+                ->with('success', '♻️ User berhasil dipulihkan dan Aktif kembali.');
+        }
+
+        return back()->with('danger', 'Gagal memulihkan user. Data mungkin tidak ditemukan.');
     }
 }

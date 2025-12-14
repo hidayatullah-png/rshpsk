@@ -7,30 +7,33 @@
     <h2>Manajemen Role Pengguna</h2>
 
     {{-- HEADER ACTION: Tombol Tambah & Filter Toggle --}}
-    <div class="action-header" style="justify-content: space-between; align-items: center;">
+    <div class="action-header">
         
         {{-- Grup Tombol Filter --}}
         <div class="filter-buttons">
-            @if($isShowingNonActive)
-                {{-- Jika sedang lihat Nonaktif, tampilkan tombol kembali ke Aktif --}}
+            {{-- Cek apakah sedang di Mode Sampah (trash=1) --}}
+            @if(request('trash') == 1)
                 <a href="{{ route('dashboard.admin.role-user.index') }}" class="btn btn-primary">
-                    <i class="fas fa-eye"></i> Tampilkan Data Aktif
+                    <i class="fas fa-arrow-left"></i> Kembali ke Data Aktif
                 </a>
-                <span class="badge badge-danger" style="margin-left: 10px; font-size: 0.9rem;">
-                    Mode: Nonaktif
+                <span class="badge badge-danger ml-2">
+                    <i class="fas fa-trash"></i> Mode: Sampah (Terhapus)
                 </span>
             @else
-                {{-- Jika sedang lihat Aktif (Default), tampilkan tombol ke Nonaktif --}}
-                <a href="{{ route('dashboard.admin.role-user.index', ['status' => 0]) }}" class="btn btn-secondary">
-                    <i class="fas fa-archive"></i> Tampilkan Data Nonaktif
+                {{-- Jika di Mode Aktif, tampilkan tombol ke Sampah --}}
+                {{-- PERBAIKAN: Link mengarah ke trash=1 agar data soft delete (Enkrid) muncul --}}
+                <a href="{{ route('dashboard.admin.role-user.index', ['trash' => 1]) }}" class="btn btn-secondary">
+                    <i class="fas fa-trash-restore"></i> Lihat Data Terhapus
                 </a>
             @endif
         </div>
 
-        {{-- Tombol Tambah --}}
-        <a href="{{ route('dashboard.admin.role-user.create') }}" class="btn btn-success">
-            <i class="fas fa-plus-circle"></i> Tambah Role User
-        </a>
+        {{-- Tombol Tambah (Hanya muncul jika BUKAN di mode sampah) --}}
+        @if(request('trash') != 1)
+            <a href="{{ route('dashboard.admin.role-user.create') }}" class="btn btn-success">
+                <i class="fas fa-plus-circle"></i> Tambah Role User
+            </a>
+        @endif
     </div>
 
     {{-- TABEL DATA --}}
@@ -43,14 +46,12 @@
                         <th>Nama Pengguna</th>
                         <th>Role</th>
                         <th>Status</th>
-                        <th>Aksi</th>
+                        <th style="min-width: 150px;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {{-- Loop data yang sudah disortir dari Controller --}}
                     @foreach ($sortedRows as $row)
                         <tr>
-                            {{-- Penomoran: 1, 2, 3 dst --}}
                             <td>{{ $loop->iteration }}</td>
                             
                             <td style="text-align: left;">{{ $row->user_name }}</td>
@@ -58,35 +59,59 @@
                             <td>
                                 {{ $row->role_name }}
                                 @if($row->is_pemilik)
-                                    <i style="color: gold; margin-left: 5px;" title="Pemilik"></i>
+                                    <i class="fas fa-crown text-warning ml-1" title="Pemilik"></i>
                                 @endif
                             </td>
                             
                             <td>
-                                @if ($row->status == 1)
+                                @if (request('trash') == 1)
+                                    <span class="badge badge-danger">Terhapus</span>
+                                @elseif ($row->status == 1)
                                     <span class="badge badge-success">Aktif</span>
                                 @else
-                                    <span class="badge badge-danger">Nonaktif</span>
+                                    <span class="badge badge-secondary">Nonaktif</span>
                                 @endif
                             </td>
 
-                            <td class="action-buttons">
-                                {{-- Tombol Edit --}}
-                                <a href="{{ route('dashboard.admin.role-user.edit', $row->id) }}"
-                                   class="btn btn-primary">
-                                    <i class="fas fa-edit"></i> Edit
-                                </a>
+                            <td>
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                    @if(request('trash') == 1)
+                                        {{-- === MODE SAMPAH (RESTORE & FORCE DELETE) === --}}
+                                        
+                                        {{-- Tombol Restore (Gunakan ID Pivot role_user) --}}
+                                        <a href="{{ url('dashboard/admin/role-user/'.$row->id.'/restore') }}" 
+                                           class="btn btn-info btn-sm"
+                                           onclick="return confirm('Pulihkan user ini agar bisa login kembali?')">
+                                            <i class="fas fa-trash-restore"></i> Pulihkan
+                                        </a>
 
-                                {{-- Tombol Hapus --}}
-                                <form action="{{ route('dashboard.admin.role-user.destroy', $row->id) }}"
-                                      method="POST">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger"
-                                            onclick="return confirm('Apakah Anda yakin ingin menghapus role \'{{ $row->role_name }}\' dari user \'{{ $row->user_name }}\'?')">
-                                        <i class="fas fa-trash-alt"></i> Hapus
-                                    </button>
-                                </form>
+                                        {{-- Tombol Force Delete --}}
+                                        <form action="{{ route('dashboard.admin.role-user.destroy', $row->id) }}" method="POST">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger btn-sm"
+                                                    onclick="return confirm('PERINGATAN: User akan dihapus PERMANEN dan tidak bisa dikembalikan. Lanjutkan?')">
+                                                <i class="fas fa-times"></i> Hapus Permanen
+                                            </button>
+                                        </form>
+
+                                    @else
+                                        {{-- === MODE AKTIF (EDIT & SOFT DELETE) === --}}
+                                        
+                                        <a href="{{ route('dashboard.admin.role-user.edit', $row->id) }}" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+
+                                        <form action="{{ route('dashboard.admin.role-user.destroy', $row->id) }}" method="POST">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-warning btn-sm"
+                                                    onclick="return confirm('Pindahkan user ini ke sampah? User tidak akan bisa login.')">
+                                                <i class="fas fa-trash"></i> Hapus
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -97,10 +122,10 @@
         {{-- Empty State --}}
         <div class="empty-message">
             <p>
-                Tidak ada data dengan status 
-                <strong>{{ $isShowingNonActive ? 'Nonaktif' : 'Aktif' }}</strong>.
+                Tidak ada data 
+                <strong>{{ request('trash') == 1 ? 'di Sampah' : 'Aktif' }}</strong>.
             </p>
-            @if($isShowingNonActive)
+            @if(request('trash') == 1)
                 <div class="empty-state-actions">
                     <a href="{{ route('dashboard.admin.role-user.index') }}" class="btn btn-primary">
                         Kembali ke Data Aktif
@@ -117,32 +142,4 @@
     @endif
 </div>
 
-<style>
-    .action-header {
-        display: flex;
-        justify-content: space-between; /* Membuat tombol kiri dan kanan berjauhan */
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    .badge {
-        padding: 6px 10px;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        display: inline-block;
-    }
-    .badge-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
-    .badge-danger { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
-
-    @media (max-width: 768px) {
-        .action-header {
-            flex-direction: column;
-            align-items: stretch;
-        }
-        .action-header .btn {
-            width: 100%;
-            margin-bottom: 5px;
-        }
-    }
-</style>
 @endsection

@@ -42,8 +42,8 @@ use App\Http\Controllers\Perawat\{
 // ===== Dokter Controllers =====
 use App\Http\Controllers\Dokter\{
     RekamMedisController as DokterRekamMedisController,
-    PasienController as DokterPasienController,         
-    ProfilController as DokterProfilController          
+    PasienController as DokterPasienController,
+    ProfilController as DokterProfilController
 };
 
 // ===== Pemilik Controllers =====
@@ -82,22 +82,36 @@ Route::middleware(['auth', 'isAdministrator'])
     ->as('dashboard.admin.')
     ->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard-admin');
-        
+
         // Master Data
         Route::resource('jenis-hewan', JenisHewanController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::get('jenis-hewan/{id}/restore', [JenisHewanController::class, 'restore'])
+            ->name('jenis-hewan.restore');
         Route::resource('ras-hewan', RasHewanController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::get('ras-hewan/{id}/restore', [RasHewanController::class, 'restore'])
+            ->name('ras-hewan.restore');
         Route::resource('kategori', KategoriController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::get('kategori/{id}/restore', [KategoriController::class, 'restore'])
+            ->name('kategori.restore');
         Route::resource('kategori-klinis', KategoriKlinisController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::get('kategori-klinis/{id}/restore', [KategoriKlinisController::class, 'restore'])
+            ->name('kategori-klinis.restore');
         Route::resource('kode-tindakan-terapi', KodeTindakanTerapiController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::get('kode-tindakan-terapi/{id}/restore', [KodeTindakanTerapiController::class, 'restore'])
+            ->name('kode-tindakan-terapi.restore');
 
         // Data Pemilik & Pet
         Route::resource('pemilik', AdminPemilikController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::get('pemilik/{id}/restore', [AdminPemilikController::class, 'restore'])->name('pemilik.restore');
         Route::get('api/get-ras/{idJenis}', [AdminPetController::class, 'getRasByJenis'])->name('api.get-ras');
         Route::resource('pet', AdminPetController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::get('pet/{id}/restore', [AdminPetController::class, 'restore'])->name('pet.restore');
 
         // Role & User
         Route::resource('role', RoleController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::resource('role-user', UserRoleController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::post('role-user/{id}/restore', [UserRoleController::class, 'restore'])
+            ->name('role-user.restore');
         Route::resource('user', UserController::class)->except(['index', 'show']);
 
         // Rekam Medis
@@ -116,7 +130,7 @@ Route::middleware(['auth', 'isResepsionis'])
     ->as('dashboard.resepsionis.')
     ->group(function () {
         Route::get('/dashboard', [ResepsionisDashboardController::class, 'index'])->name('dashboard-resepsionis');
-        
+
         // Registrasi
         Route::resource('registrasi-pemilik', ResepsionisPemilikController::class)->only(['create', 'store']);
         Route::get('api/get-ras/{idJenis}', [ResepsionisPetController::class, 'getRasByJenis'])->name('api.get-ras');
@@ -137,11 +151,11 @@ Route::middleware(['auth', 'isPerawat'])
     ->group(function () {
         // Route Resource Rekam Medis (Kecuali Destroy)
         Route::resource('rekam-medis', PerawatRekamMedisController::class)->except(['destroy']);
-        
+
         // Fitur Tambahan Rekam Medis
         Route::get('rekam-medis/{idreservasi}/panggil', [PerawatRekamMedisController::class, 'panggil'])->name('rekam-medis.panggil');
         Route::get('rekam-medis/{idreservasi}/batal', [PerawatRekamMedisController::class, 'batal'])->name('rekam-medis.batal');
-        
+
         // CRUD Tindakan
         Route::post('rekam-medis/{id}/tambah-tindakan', [PerawatRekamMedisController::class, 'tambahTindakan'])->name('rekam-medis.tambah-tindakan');
         Route::put('rekam-medis/update-tindakan/{iddetail}', [PerawatRekamMedisController::class, 'updateTindakan'])->name('rekam-medis.update-tindakan');
@@ -187,16 +201,16 @@ Route::middleware(['auth', 'isPemilik'])
     ->prefix('dashboard/pemilik')
     ->as('dashboard.pemilik.') // Titik di sini penting untuk penamaan route
     ->group(function () {
-        
+
         // 1. Dashboard Utama (Pastikan route ini ada agar LoginController tidak error)
-        Route::get('/', [PemilikDashboardController::class, 'index'])->name('home'); 
+        Route::get('/', [PemilikDashboardController::class, 'index'])->name('home');
         Route::get('/dashboard', [PemilikDashboardController::class, 'index'])->name('dashboard-pemilik');
 
         // 2. Rekam Medis (HANYA VIEW - Read Only untuk Pemilik)
         Route::resource('rekam-medis', RekamMedisController::class)->only(['index', 'show']);
-        
-        // Note: Route 'tambah-tindakan' dan 'hapus-tindakan' dihapus karena Pemilik tidak boleh mengedit RM.
 
+        // Note: Route 'tambah-tindakan' dan 'hapus-tindakan' dihapus karena Pemilik tidak boleh mengedit RM.
+    
         // 3. Data Pet
         Route::resource('daftar-pet', DaftarPetController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 

@@ -10,9 +10,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class IsPerawat
 {
-    /**
-     * Handle an incoming request.
-     */
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
